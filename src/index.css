@@ -1,0 +1,48 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Colors of Groups */
+.color-orange span {
+  background-color: orange !important;
+}
+
+.color-blue span {
+  background-color: #0173ea !important;
+}
+
+.color-green span {
+  background-color: green !important;
+}
+
+/* Text inside status */
+.statusText {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.background-blue {
+  background-color: #0173ea;
+}
+
+.background-red {
+  background-color: #d83951;
+}
+
+.background-purple {
+  background-color: #9d50dd;
+}
+
+.background-yellow {
+  background-color: #ffcb00;
+}
+
+/* Padding to Status Cells inside table */
+.padding-status {
+  padding: 0.25px 0.5px;
+}
