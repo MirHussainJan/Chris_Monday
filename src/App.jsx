@@ -2,120 +2,43 @@ import React from "react";
 import { useState, useEffect } from "react";
 import mondaySdk from "monday-sdk-js";
 import "monday-ui-react-core/dist/main.css";
+import { Search } from "monday-ui-react-core/next";
+import { Dropdown } from "monday-ui-react-core";
 //Explore more Monday React Components here: https://style.monday.com/
 // import AttentionBox from "monday-ui-react-core/dist/AttentionBox.js";
 
 //components import
 import TableContainer from "./components/Table/TableContainer";
 import Table from "./components/Table/Table";
+import NavContainer from "./components/Navigation/NavContainer";
+import SearchContainer from "./components/Search/SearchContainer";
+import { getBoardItems } from "./MondayAPI/monday";
 
 // Usage of mondaySDK example, for more information visit here: https://developer.monday.com/apps/docs/introduction-to-the-sdk/
 const monday = mondaySdk();
 
-const boardItems = [
+const personId = 61017768;
+const boardsData = [
   {
-    id: "1",
-    name: "Item 1",
-    columnValues: {
-      priority: {
-        text: "High",
-        color: "red",
-      },
-      status: {
-        text: "Done",
-        color: "green",
-      },
-      person: {
-        user_id: 123456,
-        text: "John Doe",
-      },
-      date: {
-        date: "2021-06-01",
-      },
-      time_tracking: {
-        duration: 3600,
-      },
-      group: {
-        id: "group_1",
-        text: "Group 1",
-        color: "blue",
-      },
-      board: {
-        id: "board_1",
-        text: "Board 1",
-      },
-    },
-  },
-  {
-    id: "2",
-    name: "Item 2",
-    columnValues: {
-      priority: {
-        text: "Low",
-        color: "yellow",
-      },
-      status: {
-        text: "Working on it",
-        color: "orange",
-      },
-      person: {
-        user_id: 654321,
-        text: "Jane Doe",
-      },
-      date: {
-        date: "2021-06-02",
-      },
-      time_tracking: {
-        duration: 7200,
-      },
-      group: {
-        id: "group_2",
-        text: "Group 2",
-        color: "purple",
-      },
-      board: {
-        id: "board_2",
-        text: "Board 2",
-      },
-    },
-  },
-  {
-    id: "3",
-    name: "Item 3",
-    columnValues: {
-      priority: {
-        text: "Medium",
-        color: "blue",
-      },
-      status: {
-        text: "Stuck",
-        color: "red",
-      },
-      person: {
-        user_id: 123456,
-        text: "John Doe",
-      },
-      date: {
-        date: "2021-06-03",
-      },
-      time_tracking: {
-        duration: 10800,
-      },
-      group: {
-        id: "group_3",
-        text: "Group 3",
-        color: "green",
-      },
-      board: {
-        id: "board_3",
-        text: "Board 3",
-      },
-    },
+    boardId: 7574082160,
+    peopleColId: "person",
+    statusColId: "status",
+    dateColId: "date4",
+    priorityColId: "status_1__1",
+    timeTrackingColId: "time_tracking__1",
   },
 ];
 
+const viewOptions = [
+  { value: "all", label: "View all" },
+  { value: "board", label: "Board View" },
+  { value: "person", label: "Person View" },
+  { value: "date", label: "Date View" },
+];
+
 const App = () => {
-  const [context, setContext] = useState();
+  const [context, setContext] = useState(null);
+  const [boardsItems, setBoardsItems] = useState([]);
 
   useEffect(() => {
     // Notice this method notifies the monday platform that user gains a first value in an app.
@@ -132,15 +55,48 @@ const App = () => {
       unsubscribe();
     };
   }, []);
-  return (
-    <div className="App">
-      <TableContainer>
-        <Table />
-      </TableContainer>
 
-      <TableContainer>
-        <Table />
-      </TableContainer>
+  // useEffect(() => {
+  //   async function fetchData() {
+  //     const data = await getBoardItems(
+  //       boardsData[0].boardId,
+  //       [personId],
+  //       boardsData[0].peopleColId,
+  //       boardsData[0].statusColId,
+  //       boardsData[0].dateColId,
+  //       boardsData[0].priorityColId,
+  //       boardsData[0].timeTrackingColId
+  //     );
+  //     console.log(data[0]);
+  //   }
+  //   if (!context) return;
+  //   fetchData();
+  // }, [context]);
+
+  return (
+    <div className="App" style={{ paddingLeft: "32px", paddingRight: "32px" }}>
+      {
+        <>
+          <NavContainer>
+            <SearchContainer>
+              <Search size="small" placeholder="Search" />
+            </SearchContainer>
+            <Dropdown
+              size={Dropdown.sizes.SMALL}
+              className="width-dropdown z-index-dropdown background-dropdown"
+              options={viewOptions}
+              searchable={false}
+              clearable={false}
+              defaultValue={[viewOptions[0]]}
+            />
+          </NavContainer>
+
+          <TableContainer>
+            <Table />
+          </TableContainer>
+        </>
+      }
+      {/* {!context && <div>Loading...</div>} */}
     </div>
   );
 };

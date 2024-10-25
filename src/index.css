@@ -46,3 +46,23 @@
 .padding-status {
   padding: 0.25px 0.5px;
 }
+
+/* Navigation Container */
+.nav-container {
+  display: flex;
+  padding: 8px 0;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.width-dropdown {
+  width: 150px;
+}
+
+.z-index-dropdown {
+  z-index: 10;
+}
+
+.background-dropdown {
+  background-color: #d1ecef;
+}

@@ -17,7 +17,7 @@ import TableErrorState from "./TableErrorState";
 
 const columns = [
   {
-    id: "itemName",
+    id: "name",
     infoContent: "Item Name",
     loadingStateType: "medium-text",
     title: "Sent on",
@@ -100,13 +100,16 @@ const columns = [
 const tableData = [
   {
     id: "1",
-    itemName: "Item 1",
+    name: "Item 1",
     group: {
       id: "group_1",
-      text: "Group 1",
+      title: "Group 1",
       color: "blue",
     },
-    board: "Board 1",
+    board: {
+      id: "board_1",
+      name: "Board 1",
+    },
     people: {
       id: "20973674",
       text: "Christopher Heiman",
@@ -135,13 +138,16 @@ const tableData = [
   },
   {
     id: "2",
-    itemName: "Item 2",
+    name: "Item 2",
     group: {
       id: "group_2",
-      text: "Group 2",
+      title: "Group 2",
       color: "green",
     },
-    board: "Board 2",
+    board: {
+      id: "board_1",
+      name: "Board 1",
+    },
     people: {
       id: "20973674",
       text: "Christopher Heiman",
@@ -169,14 +175,17 @@ const tableData = [
     ],
   },
   {
-    id: "2",
-    itemName: "Item 2",
+    id: "3",
+    name: "Item 3",
     group: {
       id: "group_2",
-      text: "Group 2",
+      title: "Group 2",
       color: "green",
     },
-    board: "Board 2",
+    board: {
+      id: "board_1",
+      name: "Board 1",
+    },
     people: {
       id: "20973674",
       text: "Christopher Heiman",
@@ -232,14 +241,14 @@ const Table = () => {
         <TableBody>
           {tableData.map((data) => (
             <TableRow key={data.id}>
-              <TableCell>{data.itemName}</TableCell>
+              <TableCell>{data.name}</TableCell>
               <TableCell>
                 <Label
-                  text={data.group.text}
+                  text={data.group.title}
                   className={`color-${data.group.color}`}
                 />
               </TableCell>
-              <TableCell>{data.board}</TableCell>
+              <TableCell>{data.board.name}</TableCell>
               <TableCell>
                 <Flex
                   direction={Flex.directions.COLUMN}
