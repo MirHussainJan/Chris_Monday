@@ -56,22 +56,22 @@ const App = () => {
     };
   }, []);
 
-  // useEffect(() => {
-  //   async function fetchData() {
-  //     const data = await getBoardItems(
-  //       boardsData[0].boardId,
-  //       [personId],
-  //       boardsData[0].peopleColId,
-  //       boardsData[0].statusColId,
-  //       boardsData[0].dateColId,
-  //       boardsData[0].priorityColId,
-  //       boardsData[0].timeTrackingColId
-  //     );
-  //     console.log(data[0]);
-  //   }
-  //   if (!context) return;
-  //   fetchData();
-  // }, [context]);
+  useEffect(() => {
+    async function fetchData() {
+      const data = await getBoardItems(
+        boardsData[0].boardId,
+        [personId],
+        boardsData[0].peopleColId,
+        boardsData[0].statusColId,
+        boardsData[0].dateColId,
+        boardsData[0].priorityColId,
+        boardsData[0].timeTrackingColId
+      );
+      console.log(data[0]);
+    }
+    if (!context) return;
+    fetchData();
+  }, [context]);
 
   return (
     <div className="App" style={{ paddingLeft: "32px", paddingRight: "32px" }}>

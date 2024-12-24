@@ -73,6 +73,7 @@ const getBoardItems = async (
     }${priorityColId ? `"${priorityColId}", ` : ""}${
       dateColId ? `"${dateColId}", ` : ""
     }${timeTrackingColId ? `"${timeTrackingColId}", ` : ""}]) {
+        id
         ...on StatusValue {
             label_style {
                 color
@@ -105,37 +106,227 @@ const getBoardItems = async (
   try {
     const response = await monday.api(query);
 
+    /** 
     //after we have all the users fetch user's profile pictures link
-    const userIds = response.data.boards[0].items_page.items.map((item) => {
-      // const peopleArray = item.column_values.find((colVal) =>
-      //   colVal.hasOwnProperty("persons_and_teams")
-      // ).map(person_team => );
-      // return peopleArray;
-    });
-    console.log(userIds);
+    // Extract all unique people and teams IDs
+    // const items = response.data.boards[0].items_page.items;
+    // const uniquePeopleAndTeamsMap = new Map();
 
-    // fully print the response object tot the console with max depth
-    // console.dir(response, { depth: null });
-    return response.data.boards[0].items_page.items;
+    // items.forEach((item) => {
+    //   const peopleColVal = item.column_values.find((colVal) =>
+    //     colVal.hasOwnProperty("persons_and_teams")
+    //   );
+
+    //   if (peopleColVal && peopleColVal.persons_and_teams) {
+    //     peopleColVal.persons_and_teams.forEach((personOrTeam) => {
+    //       uniquePeopleAndTeamsMap.set(personOrTeam.id, personOrTeam);
+    //     });
+    //   }
+    // });
+
+    // const uniquePeopleAndTeams = Array.from(uniquePeopleAndTeamsMap.values());
+
+    // // Split into people and teams
+    // const uniquePeople = uniquePeopleAndTeams.filter(
+    //   (item) => item.kind === "person"
+    // );
+    // const uniqueTeams = uniquePeopleAndTeams.filter(
+    //   (item) => item.kind === "team"
+    // );
+
+    // // Fetch profile pictures in parallel
+    // const [usersProfilePictures, teamProfilePictures] = await Promise.all([
+    //   getProfilePicturesOfUsers(uniquePeople.map((item) => item.id)),
+    //   getProfilePicturesOfTeams(uniqueTeams.map((item) => item.id)),
+    // ]);
+
+    // // Create a map for profile pictures
+    // const profilePicturesMap = new Map();
+
+    // [...usersProfilePictures, ...teamProfilePictures].forEach((profile) => {
+    //   profilePicturesMap.set(profile.id, profile);
+    // });
+
+    // // Update items with profile pictures
+    // const updatedItems = items.map((item) => {
+    //   const updatedColumnValues = item.column_values.map((colVal) => {
+    //     if (colVal.hasOwnProperty("persons_and_teams")) {
+    //       const updatedPersonsAndTeams = colVal.persons_and_teams.map(
+    //         (personOrTeam) => {
+    //           const profile = profilePicturesMap.get(personOrTeam.id);
+    //           return {
+    //             ...personOrTeam,
+    //             profile_picture:
+    //               profile?.photo_thumb_small || profile?.picture_url || null,
+    //           };
+    //         }
+    //       );
+
+    //       return {
+    //         ...colVal,
+    //         persons_and_teams: updatedPersonsAndTeams,
+    //       };
+    //     }
+    //     return colVal;
+    //   });
+
+    //   return {
+    //     ...item,
+    //     column_values: updatedColumnValues,
+    //   };
+    // });
+    // console.log("updatedItems", updatedItems);
+
+    **/
+    // Extract items from the response
+    const items = response.data.boards[0].items_page.items;
+
+    // Initialize a Set to collect unique person and team IDs
+    const uniquePeopleAndTeamsSet = new Set();
+
+    // Prepare updated items array
+    const updatedItems = items.map((item) => {
+      // Create a new item object without column_values
+      const newItem = {
+        id: item.id,
+        name: item.name,
+        group: item.group,
+        board: item.board,
+      };
+
+      // Extract column_values
+      const columnValues = item.column_values;
+
+      // Process columns
+      columnValues.forEach((colVal) => {
+        // Check if colVal.id matches any of the column IDs
+        if (colVal.id === peopleColId && colVal.persons_and_teams) {
+          // Process people column
+          newItem.people = colVal.persons_and_teams.map((personOrTeam) => {
+            // Add ID and kind to unique set
+            uniquePeopleAndTeamsSet.add(
+              JSON.stringify({ id: personOrTeam.id, kind: personOrTeam.kind })
+            );
+            // We will fill in profile_picture later
+            return {
+              id: personOrTeam.id,
+              kind: personOrTeam.kind,
+            };
+          });
+        } else if (colVal.id === statusColId) {
+          // Process status column
+          newItem.status = {
+            id: colVal.id,
+            text: colVal.text,
+            color: colVal.label_style?.color,
+          };
+        } else if (colVal.id === dateColId) {
+          // Process date column
+          newItem.date = colVal.text || null; // Assuming the date is in text property
+        } else if (colVal.id === priorityColId) {
+          // Process priority column
+          newItem.priority = {
+            id: colVal.id,
+            text: colVal.text,
+            color: colVal.label_style?.color,
+          };
+        } else if (colVal.id === timeTrackingColId) {
+          // Process time tracking column
+          newItem.timeTracking = colVal.history || []; // Assuming history is an array
+        }
+      });
+
+      return newItem;
+    });
+
+    // Convert uniquePeopleAndTeamsSet to an array
+    const uniquePeopleAndTeams = Array.from(uniquePeopleAndTeamsSet).map(
+      (str) => JSON.parse(str)
+    );
+
+    // Split into uniquePeople and uniqueTeams
+    const uniquePeople = uniquePeopleAndTeams.filter(
+      (item) => item.kind === "person"
+    );
+    const uniqueTeams = uniquePeopleAndTeams.filter(
+      (item) => item.kind === "team"
+    );
+
+    // Fetch profile pictures
+    const [usersProfilePictures, teamProfilePictures] = await Promise.all([
+      getProfilePicturesOfUsers(uniquePeople.map((item) => item.id)),
+      getProfilePicturesOfTeams(uniqueTeams.map((item) => item.id)),
+    ]);
+
+    // Create a map for profile pictures
+    const profilePicturesMap = new Map();
+
+    // Map user profile pictures
+    usersProfilePictures.forEach((profile) => {
+      profilePicturesMap.set(profile.id, profile.photo_thumb_small);
+    });
+
+    // Map team profile pictures
+    teamProfilePictures.forEach((profile) => {
+      profilePicturesMap.set(profile.id, profile.picture_url);
+    });
+
+    // Now, update the people array in each item to include profile_picture
+    const finalItems = updatedItems.map((item) => {
+      if (item.people) {
+        item.people = item.people.map((personOrTeam) => {
+          return {
+            ...personOrTeam,
+            profile_picture: profilePicturesMap.get(personOrTeam.id) || null,
+          };
+        });
+      }
+      return item;
+    });
+
+    // Now, finalItems is the array of items with the desired structure
+
+    console.log("items", finalItems);
+
+    return finalItems;
   } catch (error) {
     console.error("Error: ", error);
     return [];
   }
 };
 
-const getProfilePictures = async (userIds) => {
+//function to get the profile pictures of users
+const getProfilePicturesOfUsers = async (userIds) => {
   //construct query
   let query = `query {
                 users(ids: [${userIds.map((id) => id).join(",")}]) {
-                    id
-                    name
-                    photo_thumb_small
+                  id
+                  photo_thumb_small
                 }
-            }`;
+              }`;
 
   try {
     const response = await monday.api(query);
     return response.data.users;
+  } catch (error) {
+    console.error("Error: ", error);
+    return [];
+  }
+};
+
+//function to get the profile pictures of teams
+const getProfilePicturesOfTeams = async (teamIds) => {
+  //construct query
+  let query = `query {
+                teams(ids: [${teamIds.map((id) => id).join(",")}]) {
+                  id
+                  picture_url
+                }
+              }`;
+
+  try {
+    const response = await monday.api(query);
+    return response.data.teams;
   } catch (error) {
     console.error("Error: ", error);
     return [];
