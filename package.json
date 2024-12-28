@@ -5,7 +5,7 @@
   "scripts": {
     "start": "npm run stop && concurrently \"npm run server\" \"npm run expose\"",
     "build": "react-scripts build",
-    "expose": "mapps tunnel:create -p 8301",
+    "expose": "mapps tunnel:create -p 3000",
     "server": "react-scripts start",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
@@ -13,8 +13,10 @@
   },
   "dependencies": {
     "@mondaycom/apps-sdk": "^3.0.11",
+    "monday-react-quickstart-app": "file:",
     "monday-sdk-js": "^0.5.5",
-    "monday-ui-react-core": "^2.137.0"
+    "monday-ui-react-core": "^2.137.0",
+    "zustand": "^5.0.2"
   },
   "eslintConfig": {
     "extends": "react-app"

@@ -1,10 +1,9 @@
-import React from "react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import mondaySdk from "monday-sdk-js";
 import "monday-ui-react-core/dist/main.css";
 import { Search } from "monday-ui-react-core/next";
 import { Dropdown } from "monday-ui-react-core";
-//Explore more Monday React Components here: https://style.monday.com/
+// Explore more Monday React Components here: https://style.monday.com/
 // import AttentionBox from "monday-ui-react-core/dist/AttentionBox.js";
 
 //components import
@@ -38,19 +37,18 @@ const viewOptions = [
 
 const App = () => {
   const [context, setContext] = useState(null);
-  const [boardsItems, setBoardsItems] = useState([]);
+  const [boardsItems, setBoardsItems] = useState([]);  // State to store fetched data
 
   useEffect(() => {
     // Notice this method notifies the monday platform that user gains a first value in an app.
-    // Read more about it here: https://developer.monday.com/apps/docs/mondayexecute#value-created-for-user/
     monday.execute("valueCreatedForUser");
 
-    // TODO: set up event listeners, Here`s an example, read more here: https://developer.monday.com/apps/docs/mondaylisten/
+    // Set up event listener to get context from monday SDK
     const unsubscribe = monday.listen("context", (res) => {
       setContext(res.data);
     });
 
-    //clear listeners when the component is unmounted
+    // Clean up event listener when the component unmounts
     return () => {
       unsubscribe();
     };
@@ -67,36 +65,34 @@ const App = () => {
         boardsData[0].priorityColId,
         boardsData[0].timeTrackingColId
       );
-      console.log(data[0]);
+      setBoardsItems(data);  // Store fetched data in state
+      console.log("From App",data)
     }
-    if (!context) return;
+    // if (!context) return;
     fetchData();
-  }, [context]);
+  }, []);
 
   return (
     <div className="App" style={{ paddingLeft: "32px", paddingRight: "32px" }}>
-      {
-        <>
-          <NavContainer>
-            <SearchContainer>
-              <Search size="small" placeholder="Search" />
-            </SearchContainer>
-            <Dropdown
-              size={Dropdown.sizes.SMALL}
-              className="width-dropdown z-index-dropdown background-dropdown"
-              options={viewOptions}
-              searchable={false}
-              clearable={false}
-              defaultValue={[viewOptions[0]]}
-            />
-          </NavContainer>
+      <>
+        <NavContainer>
+          <SearchContainer>
+            <Search size="small" placeholder="Search" />
+          </SearchContainer>
+          <Dropdown
+            size={Dropdown.sizes.SMALL}
+            className="width-dropdown z-index-dropdown background-dropdown"
+            options={viewOptions}
+            searchable={false}
+            clearable={false}
+            defaultValue={[viewOptions[0]]}
+          />
+        </NavContainer>
 
-          <TableContainer>
-            <Table />
-          </TableContainer>
-        </>
-      }
-      {/* {!context && <div>Loading...</div>} */}
+        <TableContainer>
+          <Table data={boardsItems} />  {/* Pass the first item of boardsItems as a prop */}
+        </TableContainer>
+      </>
     </div>
   );
 };
