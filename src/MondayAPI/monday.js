@@ -344,6 +344,6 @@ const getProfilePicturesOfTeams = async (teamIds) => {
 //   "time_tracking__1"
 // );
 
-export { getBoardItems };
+export { getBoardItems, getProfilePicturesOfUsers, getProfilePicturesOfTeams};
 
 //Board Selection is Necessary

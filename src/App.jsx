@@ -3,17 +3,12 @@ import mondaySdk from "monday-sdk-js";
 import "monday-ui-react-core/dist/main.css";
 import { Search } from "monday-ui-react-core/next";
 import { Dropdown } from "monday-ui-react-core";
-// Explore more Monday React Components here: https://style.monday.com/
-// import AttentionBox from "monday-ui-react-core/dist/AttentionBox.js";
-
-//components import
 import TableContainer from "./components/Table/TableContainer";
 import Table from "./components/Table/Table";
 import NavContainer from "./components/Navigation/NavContainer";
 import SearchContainer from "./components/Search/SearchContainer";
-import { getBoardItems } from "./MondayAPI/monday";
+import { getBoardItems, getProfilePicturesOfUsers, getProfilePicturesOfTeams } from "./MondayAPI/monday";
 
-// Usage of mondaySDK example, for more information visit here: https://developer.monday.com/apps/docs/introduction-to-the-sdk/
 const monday = mondaySdk();
 
 const personId = 61017768;
@@ -37,18 +32,16 @@ const viewOptions = [
 
 const App = () => {
   const [context, setContext] = useState(null);
-  const [boardsItems, setBoardsItems] = useState([]);  // State to store fetched data
+  const [boardsItems, setBoardsItems] = useState([]); // State to store fetched data
+  const [enrichedData, setEnrichedData] = useState([]); // State to store data with profile pictures
 
   useEffect(() => {
-    // Notice this method notifies the monday platform that user gains a first value in an app.
     monday.execute("valueCreatedForUser");
 
-    // Set up event listener to get context from monday SDK
     const unsubscribe = monday.listen("context", (res) => {
       setContext(res.data);
     });
 
-    // Clean up event listener when the component unmounts
     return () => {
       unsubscribe();
     };
@@ -56,6 +49,7 @@ const App = () => {
 
   useEffect(() => {
     async function fetchData() {
+      // Fetch board items
       const data = await getBoardItems(
         boardsData[0].boardId,
         [personId],
@@ -65,10 +59,49 @@ const App = () => {
         boardsData[0].priorityColId,
         boardsData[0].timeTrackingColId
       );
-      setBoardsItems(data);  // Store fetched data in state
-      console.log("From App",data)
+
+      // Extract unique people and teams for profile picture fetching
+      const uniquePeople = [];
+      const uniqueTeams = [];
+      data.forEach((item) => {
+        if (item.people) {
+          item.people.forEach((person) => {
+            if (person.kind === "person") uniquePeople.push(person.id);
+            else if (person.kind === "team") uniqueTeams.push(person.id);
+          });
+        }
+      });
+
+      // Fetch profile pictures
+      const [userPictures, teamPictures] = await Promise.all([
+        getProfilePicturesOfUsers(uniquePeople),
+        getProfilePicturesOfTeams(uniqueTeams),
+      ]);
+
+      const profileMap = new Map();
+      userPictures.forEach((user) =>
+        profileMap.set(user.id, user.photo_thumb_small)
+      );
+      teamPictures.forEach((team) =>
+        profileMap.set(team.id, team.picture_url)
+      );
+
+      // Enrich data with profile pictures
+      const enrichedItems = data.map((item) => {
+        if (item.people) {
+          item.people = item.people.map((person) => ({
+            ...person,
+            profile_picture: profileMap.get(person.id) || null,
+          }));
+        }
+        return item;
+      });
+
+      setBoardsItems(data); // Original data
+      setEnrichedData(enrichedItems); // Enriched data with profile pictures
+      console.log("From App (Enriched Data)", enrichedItems);
     }
-    // if (!context) return;
+
     fetchData();
   }, []);
 
@@ -90,7 +123,7 @@ const App = () => {
         </NavContainer>
 
         <TableContainer>
-          <Table data={boardsItems} />  {/* Pass the first item of boardsItems as a prop */}
+          <Table data={enrichedData} /> {/* Pass enriched data with profile pictures */}
         </TableContainer>
       </>
     </div>
