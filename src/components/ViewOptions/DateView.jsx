@@ -4,11 +4,31 @@ import { MdKeyboardArrowRight } from "react-icons/md";
 import Text from "monday-ui-react-core/dist/Text";
 import Table from "../Table/Table";
 
+// Mock Data Example
 const companiesData = [
   { name: "Current" },
   { name: "Past" },
   { name: "Future" },
 ];
+
+const getFilteredData = (data, dateStatus) => {
+  const currentDate = new Date();
+  return data.filter((item) => {
+    const itemDate = new Date(item.date); // Assuming your `data` has a `date` field
+    if (dateStatus === "Current") {
+      return (
+        itemDate.toDateString() === currentDate.toDateString()
+      ); // Same date as today
+    }
+    if (dateStatus === "Past") {
+      return itemDate < currentDate; // Before today
+    }
+    if (dateStatus === "Future") {
+      return itemDate > currentDate; // After today
+    }
+    return true; // Default fallback
+  });
+};
 
 const DateView = ({ data }) => {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -48,7 +68,9 @@ const DateView = ({ data }) => {
               </Text>
               {/* Item Count */}
               <Text size="sm" className="text-gray-500">
-                {`52 items`}
+                {`${
+                  getFilteredData(data, company.name).length
+                } items`}
               </Text>
             </div>
           </div>
@@ -56,7 +78,9 @@ const DateView = ({ data }) => {
           {/* Accordion Content */}
           {selectedDate === company.name && (
             <div className="mt-4">
-              <Table data={data} />
+              <Table
+                data={getFilteredData(data, company.name)}
+              />
             </div>
           )}
         </div>

@@ -107,7 +107,7 @@ const App = () => {
   return (
     <div>
       
-        <Home enrichedData={enrichedData} />
+        <Home enrichedData={enrichedData} setEnrishedData = {setEnrichedData} />
     </div>
   );
 };

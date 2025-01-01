@@ -9,9 +9,10 @@ import SearchContainer from "../components/Search/SearchContainer";
 import BoardView from "../components/ViewOptions/BoardView";
 import CustomizationSidebar from "../components/CustomizationSidebar/CustomizationSidebar";
 import DateView from "../components/ViewOptions/DateView";
+import PersonView from "../components/ViewOptions/PersonView";
 
 
-export default function Home({ enrichedData }) {
+export default function Home({ enrichedData, setEnrishedData }) {
   const [selectedView, setSelectedView] = useState("all"); // Dropdown view state
   const [activeTab, setActiveTab] = useState("table"); // Tab state for switching between "Table" and "Calendar"
   const [showCustomization, setShowCustomization] = useState(false); // State to manage customization sidebar visibility
@@ -36,6 +37,8 @@ export default function Home({ enrichedData }) {
           return <BoardView data={enrichedData} />;
         case "date":
           return <DateView data={enrichedData} />;
+        case "person":
+          return <PersonView data={enrichedData} />;
         default:
           return (
             <TableContainer>
@@ -44,27 +47,24 @@ export default function Home({ enrichedData }) {
           );
       }
     }
-    if (activeTab === "calendar") {
-      return <div>Calendar View Coming Soon!</div>;
-    }
   };
 
   return (
     <div className="App" style={{ padding: "32px", position: "relative" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
       <Text weight="medium" style={{ fontSize: "24px" }}>
         Tasks
       </Text>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <TabList activeTabId={activeTab} onTabChange={(id) => setActiveTab(id)}>
+        {/* <TabList activeTabId={activeTab} onTabChange={(id) => setActiveTab(id)}>
           <Tab id="table">Table</Tab>
           <Tab id="calendar">Calendar</Tab>
-        </TabList>
+        </TabList> */}
         <button
           className="hover:underline flex font-bold"
           onClick={() => setShowCustomization(true)}
         >
           <GiSettingsKnobs size={17} style={{ marginRight: "13px" }} className="rotate-90" />
-          <Text type={Text.types.BUTTON}>Customize</Text>
+          <Text type={Text.types.BUTTON} >Customize</Text>
         </button>
       </div>
       <NavContainer>
@@ -83,8 +83,8 @@ export default function Home({ enrichedData }) {
       </NavContainer>
       {renderContent()}
       {showCustomization && (
-        <CustomizationSidebar onClose={() => setShowCustomization(false)} />
+        <CustomizationSidebar onClose={() => setShowCustomization(false)} data = {enrichedData} setData = {setEnrishedData} />
       )}
     </div>
   );
-}
+} 

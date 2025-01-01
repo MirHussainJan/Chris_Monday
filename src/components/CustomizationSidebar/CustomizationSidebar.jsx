@@ -12,7 +12,6 @@ import {
 } from "monday-ui-react-core";
 import { FaCalendarAlt } from "react-icons/fa";
 import { RxCross2 } from "react-icons/rx";
-
 const peopleData = [
   { name: "Johnny", role: "Creative Director", avatar: "https://via.placeholder.com/30" },
   { name: "Johnny Martin", role: "CEO", avatar: "https://via.placeholder.com/30" },
@@ -36,7 +35,7 @@ const companyData = [
   },
 ];
 
-export default function CustomizationSidebar({ onClose }) {
+export default function CustomizationSidebar({ onClose, data, setData }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [selectedColumn, setSelectedColumn] = useState(null);
@@ -116,7 +115,7 @@ export default function CustomizationSidebar({ onClose }) {
       <div className="mt-4">
         <Accordion>
           <AccordionItem title="Date Column">
-            <Text className="text-md mb-4 font-bold">Which columns should we show?</Text>
+            <Text className="text-md mb-4 font-bold">Which board columns should we show?</Text>
             <Search
               placeholder="Search Column"
               size="small"
