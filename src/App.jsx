@@ -7,7 +7,11 @@ import TableContainer from "./components/Table/TableContainer";
 import Table from "./components/Table/Table";
 import NavContainer from "./components/Navigation/NavContainer";
 import SearchContainer from "./components/Search/SearchContainer";
-import { getBoardItems, getProfilePicturesOfUsers, getProfilePicturesOfTeams } from "./MondayAPI/monday";
+import {
+  getBoardItems,
+  getProfilePicturesOfUsers,
+  getProfilePicturesOfTeams,
+} from "./MondayAPI/monday";
 
 const monday = mondaySdk();
 
@@ -82,9 +86,7 @@ const App = () => {
       userPictures.forEach((user) =>
         profileMap.set(user.id, user.photo_thumb_small)
       );
-      teamPictures.forEach((team) =>
-        profileMap.set(team.id, team.picture_url)
-      );
+      teamPictures.forEach((team) => profileMap.set(team.id, team.picture_url));
 
       // Enrich data with profile pictures
       const enrichedItems = data.map((item) => {
@@ -120,10 +122,14 @@ const App = () => {
             clearable={false}
             defaultValue={[viewOptions[0]]}
           />
+          <button>
+            Customize
+          </button>
         </NavContainer>
 
         <TableContainer>
-          <Table data={enrichedData} /> {/* Pass enriched data with profile pictures */}
+          <Table data={enrichedData} />{" "}
+          {/* Pass enriched data with profile pictures */}
         </TableContainer>
       </>
     </div>

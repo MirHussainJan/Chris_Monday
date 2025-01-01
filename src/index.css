@@ -66,3 +66,43 @@
 .background-dropdown {
   background-color: #d1ecef;
 }
+
+/* General Table Styles */
+.table-cell {
+  padding: 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+/* Status Column Specific */
+.status-cell {
+  color: white; /* Default text color */
+  font-weight: bold;
+  text-align: center;
+  border-radius: 4px; /* Optional, for rounded background */
+  padding: 8px;
+}
+
+/* Priority Column Specific */
+.priority-cell {
+  color: white; /* Default text color */
+  font-weight: bold;
+  text-align: center;
+  border-radius: 4px; /* Optional, for rounded background */
+  padding: 8px;
+}
+
+/* Optional Tooltip Styles (if needed) */
+.tooltip {
+  font-size: 12px;
+  color: black;
+}
+
+/* Handle cases where the background color doesn't exist (Fallback) */
+.status-cell[style*="background-color: transparent"] {
+  background-color: #cccccc; /* Fallback grey color */
+}
+
+.priority-cell[style*="background-color: transparent"] {
+  background-color: #cccccc; /* Fallback grey color */
+}
