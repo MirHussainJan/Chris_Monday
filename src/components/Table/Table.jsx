@@ -133,12 +133,12 @@ const Table = ({ data }) => {
               <AvatarGroup size={Avatar.sizes.SMALL} max={4}>
                 {item.people.map((person) => (
                   <Avatar
-                    key={person.id}
+                    key={person.text}
                     type={Avatar.types.IMG}
                     src={person.profile_picture}
                     ariaLabel={"Julia Martinez"}
                     tooltipProps={{
-                      content: <span>{person.id}</span>,
+                      content: <span>{person.text}</span>,
                       position: Tooltip.positions.BOTTOM,
                     }}
                   />
