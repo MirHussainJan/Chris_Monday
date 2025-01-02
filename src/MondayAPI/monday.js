@@ -92,10 +92,11 @@ const getBoardItems = async (
             }
         }
         ...on PeopleValue {
+        text
             persons_and_teams {
                 id
                 kind
-            }
+            }    
         }
     }`;
   } else {

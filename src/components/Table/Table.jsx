@@ -136,9 +136,9 @@ const Table = ({ data }) => {
                     key={person.id}
                     type={Avatar.types.IMG}
                     src={person.profile_picture}
-                    ariaLabel={person.name}
+                    ariaLabel={"Julia Martinez"}
                     tooltipProps={{
-                      content: <span>{person.name}</span>,
+                      content: <span>{person.id}</span>,
                       position: Tooltip.positions.BOTTOM,
                     }}
                   />
@@ -159,8 +159,10 @@ const Table = ({ data }) => {
               className="padding-status"
             >
               <Text
+                className="flex items-center justify-center h-full w-full"
                 color={item.status?.color}
                 style={{
+
                   backgroundColor: item.status?.color || "#f0f0f0", // Default color if no color is provided
                 }}
               >
@@ -171,15 +173,19 @@ const Table = ({ data }) => {
             {/* Priority Column */}
             <TableCell
               style={{
-                backgroundColor: item.priority?.color || "#000000", // Default color if no color is provided
+                backgroundColor: item.priority?.color || "#f0f0f0", // Default color if no color is provided
               }}
               className="padding-status"
             >
               <Text
-                color="onInverted"
-                style={{ color: item.priority?.color ? "white" : "black" }}
+                className="flex items-center justify-center h-full w-full"
+                color={item.priority?.color}
+                style={{
+
+                  backgroundColor: item.priority?.color || "#f0f0f0", // Default color if no color is provided
+                }}
               >
-                {item.priority?.text || "No Priority"}
+                {item.priority?.text || "No Status"}
               </Text>
             </TableCell>
 

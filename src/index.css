@@ -1,3 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 * {
   margin: 0;
   padding: 0;
@@ -66,43 +69,26 @@
 .background-dropdown {
   background-color: #d1ecef;
 }
-
-/* General Table Styles */
-.table-cell {
-  padding: 12px;
-  text-align: left;
-  vertical-align: middle;
+/* Reduce the width of the default vertical scrollbar */
+html {
+  scrollbar-width: thin; /* For Firefox */
+  scrollbar-color: #888 #f1f1f1; /* For Firefox */
 }
 
-/* Status Column Specific */
-.status-cell {
-  color: white; /* Default text color */
-  font-weight: bold;
-  text-align: center;
-  border-radius: 4px; /* Optional, for rounded background */
-  padding: 8px;
+body::-webkit-scrollbar {
+  width: 6px; /* Width of the vertical scrollbar */
+  
 }
 
-/* Priority Column Specific */
-.priority-cell {
-  color: white; /* Default text color */
-  font-weight: bold;
-  text-align: center;
-  border-radius: 4px; /* Optional, for rounded background */
-  padding: 8px;
+body::-webkit-scrollbar-thumb {
+  background: #888; /* Color of the scrollbar thumb */
+  border-radius: 10px; /* Rounded corners */
 }
 
-/* Optional Tooltip Styles (if needed) */
-.tooltip {
-  font-size: 12px;
-  color: black;
+body::-webkit-scrollbar-thumb:hover {
+  background: #555; /* Hover effect for the scrollbar thumb */
 }
 
-/* Handle cases where the background color doesn't exist (Fallback) */
-.status-cell[style*="background-color: transparent"] {
-  background-color: #cccccc; /* Fallback grey color */
-}
-
-.priority-cell[style*="background-color: transparent"] {
-  background-color: #cccccc; /* Fallback grey color */
+body::-webkit-scrollbar-track {
+  background: #f1f1f1; /* Background color of the scrollbar track */
 }
