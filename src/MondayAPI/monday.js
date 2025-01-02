@@ -5,6 +5,25 @@ monday.setToken(
   "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjM3NjE1OTI3NywiYWFpIjoxMSwidWlkIjo2MTAxNzc2OCwiaWFkIjoiMjAyNC0wNi0yNFQxOTowNzozOS4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6ODUyNzQ5NSwicmduIjoidXNlMSJ9.ZSI1v2UukqqA0DckP8jc6Xp2rNqvboN-X46VilNRL6E"
 );
 
+const getBoards = async () =>
+{
+  let monday_query =`{
+    boards(limit: 500, workspace_ids: 8359320) {
+      id
+      name
+    }
+  }`
+  let response = await monday.api(monday_query)
+  let ids = []
+  response.data.boards.forEach(board => {
+    if(board.id != "7574081999")
+    {
+    ids.push(board.id)
+    }
+  })
+return ids  
+}
+
 //function to get the board items
 const getBoardItems = async (
   boardId = "",
@@ -212,6 +231,7 @@ const getBoardItems = async (
             return {
               id: personOrTeam.id,
               kind: personOrTeam.kind,
+              text: colVal.text,
             };
           });
         } else if (colVal.id === statusColId) {
@@ -300,7 +320,7 @@ const getBoardItems = async (
 const getProfilePicturesOfUsers = async (userIds) => {
   //construct query
   let query = `query {
-                users(ids: [${userIds.map((id) => id).join(",")}]) {
+                users(limit: 500 ids: [${userIds.map((id) => id).join(",")}]) {
                   id
                   photo_thumb_small
                 }
@@ -345,6 +365,6 @@ const getProfilePicturesOfTeams = async (teamIds) => {
 //   "time_tracking__1"
 // );
 
-export { getBoardItems, getProfilePicturesOfUsers, getProfilePicturesOfTeams};
+export { getBoardItems, getProfilePicturesOfUsers, getProfilePicturesOfTeams, getBoards};
 
 //Board Selection is Necessary

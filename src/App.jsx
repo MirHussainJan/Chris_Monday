@@ -5,6 +5,7 @@ import {
   getBoardItems,
   getProfilePicturesOfUsers,
   getProfilePicturesOfTeams,
+  getBoards,
 } from "./MondayAPI/monday";
 import Home from "./pages/Home";
 import SkeletonLoader from "./components/Loader/SkeletonLoader";
@@ -42,62 +43,81 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    async function fetchData() {
-      setLoading(true); // Start loading
+    async function fetchAllData() {
       try {
-        const data = await getBoardItems(
-          boardsData[0].boardId,
-          [personId],
-          boardsData[0].peopleColId,
-          boardsData[0].statusColId,
-          boardsData[0].dateColId,
-          boardsData[0].priorityColId,
-          boardsData[0].timeTrackingColId
-        );
-
-        const uniquePeople = [];
-        const uniqueTeams = [];
-        data.forEach((item) => {
-          if (item.people) {
-            item.people.forEach((person) => {
-              if (person.kind === "person") uniquePeople.push(person.id);
-              else if (person.kind === "team") uniqueTeams.push(person.id);
-            });
-          }
-        });
-
-        const [userPictures, teamPictures] = await Promise.all([
-          getProfilePicturesOfUsers(uniquePeople),
-          getProfilePicturesOfTeams(uniqueTeams),
-        ]);
-
-        const profileMap = new Map();
-        userPictures.forEach((user) =>
-          profileMap.set(user.id, user.photo_thumb_small)
-        );
-        teamPictures.forEach((team) =>
-          profileMap.set(team.id, team.picture_url)
-        );
-
-        const enrichedItems = data.map((item) => {
-          if (item.people) {
-            item.people = item.people.map((person) => ({
-              ...person,
-              profile_picture: profileMap.get(person.id) || null,
-            }));
-          }
-          return item;
-        });
-
-        setBoardsItems(data);
-        setEnrichedData(enrichedItems);
-        console.log("From App (Enriched Data)", enrichedItems);
-      } finally {
-        setLoading(false); // End loading
+        let ids = await getBoards(); // Fetch all board IDs
+        console.log("Board IDs:", ids);
+ 
+        const allEnrichedData = []; // Array to store enriched data for all boards
+ 
+        // Loop through each board ID
+        for (const boardId of ids) {
+          console.log(`Processing Board ID: ${boardId}`);
+ 
+          // Fetch board items
+          const data = await getBoardItems(
+            boardId, // Dynamic board ID
+            [personId], // Person ID
+            boardsData[0].peopleColId, // People Column ID
+            boardsData[0].statusColId, // Status Column ID
+            boardsData[0].dateColId, // Date Column ID
+            boardsData[0].priorityColId, // Priority Column ID
+            boardsData[0].timeTrackingColId // Time Tracking Column ID
+          );
+          console.log(data);
+          // Extract unique people and teams for profile picture fetching
+          const uniquePeople = [];
+          const uniqueTeams = [];
+          data.forEach((item) => {
+            if (item.people) {
+              item.people.forEach((person) => {
+                if (person.kind === "person") uniquePeople.push(person.id);
+                else if (person.kind === "team") uniqueTeams.push(person.id);
+              });
+            }
+          });
+ 
+          // Fetch profile pictures
+          const [userPictures, teamPictures] = await Promise.all([
+            getProfilePicturesOfUsers(uniquePeople),
+            getProfilePicturesOfTeams(uniqueTeams),
+          ]);
+ 
+          const profileMap = new Map();
+          userPictures.forEach((user) =>
+            profileMap.set(user.id, user.photo_thumb_small)
+          );
+          teamPictures.forEach((team) =>
+            profileMap.set(team.id, team.picture_url)
+          );
+ 
+          // Enrich data with profile pictures
+          const enrichedItems = data.map((item) => {
+            if (item.people) {
+              item.people = item.people.map((person) => ({
+                ...person,
+                profile_picture: profileMap.get(person.id) || null,
+              }));
+            }
+            return item;
+          });
+ 
+          // Add enriched data to the global array
+          allEnrichedData.push(...enrichedItems);
+        }
+ 
+        // Set data for all boards
+        setBoardsItems(allEnrichedData); // Original data
+        setEnrichedData(allEnrichedData); // Enriched data with profile pictures
+ 
+        console.log("All Enriched Data:", allEnrichedData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
       }
     }
-
-    fetchData();
+ 
+    // Call the updated function
+    fetchAllData();
   }, []);
 
   if(enrichedData.length === 0){
