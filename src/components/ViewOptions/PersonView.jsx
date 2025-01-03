@@ -6,11 +6,15 @@ import Table from "../Table/Table";
 
 // Helper to extract unique person IDs from data
 const extractUniquePersonIds = (data) => {
-  const personIds = new Set();
+  const personMap = new Map();
   data.forEach((item) => {
-    item.people.forEach((person) => personIds.add(person.id));
+    item.people.forEach((person) => {
+      if (!personMap.has(person.id)) {
+        personMap.set(person.id, { id: person.id, text: person.text });
+      }
+    });
   });
-  return Array.from(personIds);
+  return Array.from(personMap.values());
 };
 
 // Helper to filter data by person ID
@@ -34,48 +38,51 @@ const PersonView = ({ data }) => {
 
   return (
     <div className="p-6">
-      {peopleIds.map((personId, index) => (
-        <div key={index} className="pb-4 mb-4">
-          {/* Accordion Header */}
-          <div
-            className="flex items-center justify-between cursor-pointer"
-            onClick={() => togglePerson(personId)}
-          >
-            <div className="flex items-center gap-2">
-              {/* Arrow Icon */}
-              <span
-                className={`${
-                  selectedPersonId === personId ? "rotate-90" : ""
-                } transform text-xl text-gray-700 transition-transform duration-200`}
-              >
-                <MdKeyboardArrowRight />
-              </span>
-              {/* Person ID */}
-              <Text
-                size="lg"
-                className={`${
-                  selectedPersonId === personId
-                    ? "font-bold text-blue-600"
-                    : "text-gray-700"
-                }`}
-              >
-                {`Person ID: ${personId}`}
-              </Text>
-              {/* Item Count */}
-              <Text size="sm" className="text-gray-500">
-                {`${getFilteredDataById(data, personId).length} items`}
-              </Text>
+      {peopleIds.map((personId) => {
+        const filteredData = getFilteredDataById(data, personId.id);
+        return (
+          <div key={personId.id} className="pb-4 mb-4">
+            {/* Accordion Header */}
+            <div
+              className="flex items-center justify-between cursor-pointer"
+              onClick={() => togglePerson(personId.id)}
+            >
+              <div className="flex items-center gap-2">
+                {/* Arrow Icon */}
+                <span
+                  className={`${
+                    selectedPersonId === personId.id ? "rotate-90" : ""
+                  } transform text-xl text-gray-700 transition-transform duration-200`}
+                >
+                  <MdKeyboardArrowRight />
+                </span>
+                {/* Person ID */}
+                <Text
+                  size="lg"
+                  className={`${
+                    selectedPersonId === personId.id
+                      ? "font-bold text-blue-600"
+                      : "text-gray-700"
+                  }`}
+                >
+                  {`${personId.text}`}
+                </Text>
+                {/* Item Count */}
+                <Text size="sm" className="text-gray-500">
+                  {`${filteredData.length} items`}
+                </Text>
+              </div>
             </div>
-          </div>
 
-          {/* Accordion Content */}
-          {selectedPersonId === personId && (
-            <div className="mt-4">
-              <Table data={getFilteredDataById(data, personId)} />
-            </div>
-          )}
-        </div>
-      ))}
+            {/* Accordion Content */}
+            {selectedPersonId === personId.id && (
+              <div className="mt-4">
+                <Table data={filteredData} />
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };

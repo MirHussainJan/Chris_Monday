@@ -1,5 +1,5 @@
-import mondaySdk from "monday-sdk-js";
-// const mondaySdk = require("monday-sdk-js");
+// import mondaySdk from "monday-sdk-js";
+const mondaySdk = require("monday-sdk-js");
 const monday = mondaySdk();
 monday.setToken(
   "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjM3NjE1OTI3NywiYWFpIjoxMSwidWlkIjo2MTAxNzc2OCwiaWFkIjoiMjAyNC0wNi0yNFQxOTowNzozOS4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6ODUyNzQ5NSwicmduIjoidXNlMSJ9.ZSI1v2UukqqA0DckP8jc6Xp2rNqvboN-X46VilNRL6E"
@@ -13,7 +13,6 @@ const getBoards = async () =>
   {
     id
     name
-}
 }
 }`
   let response = await monday.api(monday_query)
@@ -369,6 +368,6 @@ const getProfilePicturesOfTeams = async (teamIds) => {
 //   "time_tracking__1"
 // );
 
-export { getBoardItems, getProfilePicturesOfUsers, getProfilePicturesOfTeams, getBoards as getBoards};
+export { getBoardItems, getProfilePicturesOfUsers, getProfilePicturesOfTeams, getBoards};
 
 //Board Selection is Necessary
