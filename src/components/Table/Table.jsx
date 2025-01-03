@@ -1,216 +1,83 @@
 import {
+  Label,
   Table as MondayTable,
   TableBody,
   TableCell,
   TableHeader,
   TableHeaderCell,
   TableRow,
-  Label,
-  Text,
-  AvatarGroup,
-  Avatar,
-  Flex,
-  Tooltip,
 } from "monday-ui-react-core";
 import TableEmptyState from "./TableEmptyState";
 import TableErrorState from "./TableErrorState";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { getBoardsData, getPersonValues } from "../../MondayAPI/monday2";
 
-const columns = [
-  {
-    id: "name",
-    infoContent: "Item Name",
-    loadingStateType: "medium-text",
-    title: "Item Name",
-    width: {
-      min: 120,
-    },
-  },
-  {
-    id: "group",
-    infoContent: "Group Name",
-    loadingStateType: "medium-text",
-    title: "Group",
-    width: {
-      max: 142,
-      min: 84,
-    },
-  },
-  {
-    id: "board",
-    infoContent: "Board Name",
-    loadingStateType: "circle",
-    title: "Board",
-    width: {
-      max: 185,
-      min: 84,
-    },
-  },
-  {
-    id: "people",
-    infoContent: "People Name",
-    loadingStateType: "medium-text",
-    title: "People",
-    width: {
-      max: 200,
-      min: 96,
-    },
-  },
-  {
-    id: "date",
-    infoContent: "Date",
-    loadingStateType: "medium-text",
-    title: "Date",
-    width: {
-      max: 200,
-      min: 96,
-    },
-  },
-  {
-    id: "status",
-    infoContent: "Status",
-    loadingStateType: "medium-text",
-    title: "Status",
-    width: {
-      max: 200,
-      min: 96,
-    },
-  },
-  {
-    id: "priority",
-    infoContent: "Priority",
-    loadingStateType: "medium-text",
-    title: "Priority",
-    width: {
-      max: 200,
-      min: 96,
-    },
-  },
-  {
-    id: "timeTracking",
-    infoContent: "Time Tracking",
-    loadingStateType: "medium-text",
-    title: "Time Tracking",
-    width: {
-      max: 200,
-      min: 96,
-    },
-  },
-];
+const Table = ({ boardIds, selectedPeopleColumns }) => {
+  const [data, setData] = useState([]);
+  const [personData, setPersonData] = useState({});
 
-const Table = ({ data }) => {
+  const defaultColumns = [
+    { id: "name", title: "Item Name" },
+    { id: "group", title: "Group" },
+  ];
+
+  const columns = [
+    ...defaultColumns,
+    ...selectedPeopleColumns.map((column) => ({
+      id: column.id,
+      title: column.title,
+    })),
+  ];
+
   useEffect(() => {
-    console.log("From Table:", data);
-  }, [data]);
+    const fetchData = async () => {
+      if (boardIds.length > 0) {
+        const boardData = await getBoardsData(boardIds);
+        const mergedData = boardData.reduce((acc, board) => {
+          if (board.items_page) acc.push(...board.items_page.items);
+          return acc;
+        }, []);
+        setData(mergedData);
+
+        // Fetch person data for selected people columns
+        const personColumnIds = selectedPeopleColumns.map((col) => col.id);
+        if (personColumnIds.length > 0) {
+          const personValues = await getPersonValues(personColumnIds, boardIds);
+          const parsedData = {};
+          personValues.forEach((board) => {
+            board.items_page.items.forEach((item) => {
+              item.column_values.forEach((colValue, colIndex) => {
+                const columnId = personColumnIds[colIndex];
+                if (!parsedData[columnId]) parsedData[columnId] = [];
+                parsedData[columnId].push(colValue.text || "-");
+              });
+            });
+          });
+          setPersonData(parsedData);
+        }
+      }
+    };
+
+    fetchData();
+  }, [boardIds, selectedPeopleColumns]);
 
   return (
-    <MondayTable
-      columns={columns}
-      emptyState={<TableEmptyState />}
-      errorState={<TableErrorState />}
-    >
+    <MondayTable columns={columns} emptyState={<TableEmptyState />} errorState={<TableErrorState />}>
       <TableHeader>
         {columns.map((col) => (
-          <TableHeaderCell
-            key={col.id}
-            title={col.title}
-            onSortClicked={() => {}}
-          />
+          <TableHeaderCell key={col.id} title={col.title} className="table-header" />
         ))}
       </TableHeader>
       <TableBody>
-        {data.map((item) => (
-          <TableRow key={item.id}>
+        {data.map((item, index) => (
+          <TableRow key={item.id} className={index % 2 === 0 ? "even-row" : "odd-row"}>
             <TableCell>{item.name}</TableCell>
             <TableCell>
-              <Label
-                text={item.group.title}
-                className={`color-${item.group.color}`}
-              />
+              <Label text={item.group.title} className={`color-${item.group.color}`} />
             </TableCell>
-            <TableCell>{item.board.name}</TableCell>
-            <TableCell>
-              <AvatarGroup size={Avatar.sizes.SMALL} max={4}>
-                {item.people.map((person) => (
-                  <Avatar
-                    key={person.text}
-                    type={Avatar.types.IMG}
-                    src={person.profile_picture}
-                    ariaLabel={"Julia Martinez"}
-                    tooltipProps={{
-                      content: <span>{person.text}</span>,
-                      position: Tooltip.positions.BOTTOM,
-                    }}
-                  />
-                ))}
-              </AvatarGroup>
-            </TableCell>
-            <TableCell>
-              <Label
-                text={new Date(item.date).toDateString()}
-                color="primary"
-              />
-            </TableCell>
-            {/* Status Column */}
-            <TableCell
-              style={{
-                backgroundColor: item.status?.color || "#f0f0f0", // Default color if no color is provided
-              }}
-              className="padding-status"
-            >
-              <Text
-                className="flex items-center justify-center h-full w-full"
-                color={item.status?.color}
-                style={{
-
-                  backgroundColor: item.status?.color || "#f0f0f0", // Default color if no color is provided
-                }}
-              >
-                {item.status?.text || "No Status"}
-              </Text>
-            </TableCell>
-
-            {/* Priority Column */}
-            <TableCell
-              style={{
-                backgroundColor: item.priority?.color || "#f0f0f0", // Default color if no color is provided
-              }}
-              className="padding-status"
-            >
-              <Text
-                className="flex items-center justify-center h-full w-full"
-                color={item.priority?.color}
-                style={{
-
-                  backgroundColor: item.priority?.color || "#f0f0f0", // Default color if no color is provided
-                }}
-              >
-                {item.priority?.text || "No Status"}
-              </Text>
-            </TableCell>
-
-            <TableCell>
-              <Text>
-                {(
-                  item.timeTracking.reduce((prev, curr) => {
-                    if (
-                      curr.started_user_id === item.people[0]?.id &&
-                      curr.ended_user_id === item.people[0]?.id
-                    ) {
-                      return (
-                        prev +
-                        (new Date(curr.ended_at) - new Date(curr.started_at))
-                      );
-                    }
-                    return prev;
-                  }, 0) /
-                  1000 /
-                  60 /
-                  60
-                ).toFixed(2)}{" "}
-                Hours
-              </Text>
-            </TableCell>
+            {selectedPeopleColumns.map((col) => (
+              <TableCell key={col.id}>{personData[col.id]?.[index] || "-"}</TableCell>
+            ))}
           </TableRow>
         ))}
       </TableBody>

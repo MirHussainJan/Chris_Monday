@@ -1,90 +1,109 @@
-import React, { useEffect, useState } from "react";
-import "monday-ui-react-core/dist/main.css";
-import SkeletonLoader from "./components/Loader/SkeletonLoader";
-import {
-  getBoards,
-  getPeopleColumns,
-  getDateColumns,
-  getStatusColumns,
-  getPersonValues,
-  getStatusValues,
-  getDateValuesAndgetTimeTrackingValue,
-} from "./MondayAPI/monday2";
-import { Home } from "monday-ui-react-core/dist/dist/esm/components/Icon/Icons/index.js";
+import { useState, useEffect } from "react";
+import Table from "./components/Table/Table";
+import { getBoards, getBoardsData, getPeopleColumns } from "./MondayAPI/monday2"; // Import necessary API functions
 
 const App = () => {
-  // State variables for each data type
   const [boards, setBoards] = useState([]);
-  const [peopleColumns, setPeopleColumns] = useState([]);
-  const [dateColumns, setDateColumns] = useState([]);
-  const [statusColumns, setStatusColumns] = useState([]);
-  const [personValues, setPersonValues] = useState([]);
-  const [statusValues, setStatusValues] = useState([]);
-  const [dateAndTimeTrackingValues, setDateAndTimeTrackingValues] = useState([]);
+  const [selectedBoardIds, setSelectedBoardIds] = useState([]);
+  const [boardData, setBoardData] = useState([]);
+  const [peopleColumns, setPeopleColumns] = useState([]); // Store the people columns
+  const [selectedPeopleColumns, setSelectedPeopleColumns] = useState([]); // Track selected people columns
 
+  // Fetch boards on initial render
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch boards
-        const boardsData = await getBoards();
-        setBoards(boardsData);
-        console.log("Boards Data:", boardsData);
-
-        // Fetch columns
-        const [peopleColumnsData, dateColumnsData, statusColumnsData] =
-          await Promise.all([
-            getPeopleColumns(),
-            getDateColumns(),
-            getStatusColumns(),
-          ]);
-        setPeopleColumns(peopleColumnsData);
-        setDateColumns(dateColumnsData);
-        setStatusColumns(statusColumnsData);
-
-        console.log("People Columns:", peopleColumnsData);
-        console.log("Date Columns:", dateColumnsData);
-        console.log("Status Columns:", statusColumnsData);
-
-        // Fetch values
-        const boardIds = boardsData.map((board) => board.id);
-        const peopleIds = peopleColumnsData.flatMap((columns) =>
-          columns.map((col) => col.id)
-        );
-        const statusIds = statusColumnsData.flatMap((columns) =>
-          columns.map((col) => col.id)
-        );
-        const dateIds = dateColumnsData.flatMap((columns) =>
-          columns.map((col) => col.id)
-        );
-
-        const [personValuesData, statusValuesData, dateAndTimeTrackingData] =
-          await Promise.all([
-            getPersonValues(peopleIds, boardIds),
-            getStatusValues(statusIds, boardIds),
-            getDateValuesAndgetTimeTrackingValue(dateIds, boardIds),
-          ]);
-        setPersonValues(personValuesData);
-        setStatusValues(statusValuesData);
-        setDateAndTimeTrackingValues(dateAndTimeTrackingData);
-
-        console.log("Person Values:", personValuesData);
-        console.log("Status Values:", statusValuesData);
-        console.log("Date and Time Tracking Values:", dateAndTimeTrackingData);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
+    const fetchBoards = async () => {
+      const boards = await getBoards();
+      setBoards(boards);
     };
-
-    fetchData();
+    fetchBoards();
   }, []);
 
-  if (!boards || boards.length === 0) {
-    return <SkeletonLoader />;
-  }
+  // Fetch people columns for selected boards
+  useEffect(() => {
+    const fetchPeopleColumns = async () => {
+      if (selectedBoardIds.length > 0) {
+        const peopleColumns = await getPeopleColumns(selectedBoardIds);
+        const allPeopleColumns = peopleColumns.flatMap((board) =>
+          board.columns.map((column) => ({
+            ...column,
+            boardName: board.name, // Attach the parent board name
+          }))
+        );
+        setPeopleColumns(allPeopleColumns);
+      } else {
+        setPeopleColumns([]);
+      }
+    };
+    fetchPeopleColumns();
+  }, [selectedBoardIds]);
+
+  // Handle board selection
+  const handleCheckboxChange = (boardId) => {
+    setSelectedBoardIds((prev) =>
+      prev.includes(boardId)
+        ? prev.filter((id) => id !== boardId)
+        : [...prev, boardId]
+    );
+  };
+
+  // Handle people column selection
+  const handlePeopleColumnSelection = (column) => {
+    setSelectedPeopleColumns((prev) =>
+      prev.includes(column)
+        ? prev.filter((col) => col !== column)
+        : [...prev, column]
+    );
+  };
 
   return (
     <div>
-      <Home/>
+      <h1>Select Boards</h1>
+      {boards.length > 0 ? (
+        <div>
+          {boards.map((board) => (
+            <div key={board.id}>
+              <input
+                type="checkbox"
+                id={board.id}
+                checked={selectedBoardIds.includes(board.id)}
+                onChange={() => handleCheckboxChange(board.id)}
+              />
+              <label htmlFor={board.id}>{board.name}</label>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p>Loading boards...</p>
+      )}
+
+      <h2>Select Columns</h2>
+      {peopleColumns.length > 0 ? (
+        <div>
+          {peopleColumns.map((column) => (
+            <div key={column.id}>
+              <input
+                type="checkbox"
+                id={column.id}
+                checked={selectedPeopleColumns.includes(column)}
+                onChange={() => handlePeopleColumnSelection(column)}
+              />
+              <label htmlFor={column.id}>{column.title}</label>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p>Loading people columns...</p>
+      )}
+
+      <h2>Board Data</h2>
+      {selectedBoardIds.length > 0 ? (
+        <Table
+          boardIds={selectedBoardIds} // Pass selected board IDs to Table
+          selectedPeopleColumns={selectedPeopleColumns} // Pass selected columns to Table
+        />
+      ) : (
+        <p>Select boards to see their data.</p>
+      )}
     </div>
   );
 };
