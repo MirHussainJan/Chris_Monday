@@ -29,62 +29,57 @@ const getBoards = async () => {
   return response.data.boards;
 };
 
-const getPeopleColumns = async () => {
-  const boards = await getBoards();
-  let column_values = [];
-  // Execute queries for each board and get people columns
-  for (const board of boards) {
-    let query = `query {
-        boards(ids: ${board.id}) {
+const getPeopleColumns = async (boardIds) => {
+  let query = `query {
+        boards(ids: ${JSON.stringify(boardIds)}) {
           columns(types: people) {
             id
             title
           }
         }
       }`;
-    let response = await monday.api(query);
-    column_values.push(response.data.boards[0].columns);
-  }
-  return column_values; // Assuming one board is returned
+  let response = await monday.api(query);
+  return response.data.boards;
 };
-
-const getDateColumns = async () => {
-  const boards = await getBoards();
-  let column_values = [];
-  // Execute queries for each board and get people columns
-  for (const board of boards) {
-    let query = `query {
-          boards(ids: ${board.id}) {
+const getDateColumns = async (boardIds) => {
+  let query = `query {
+          boards(ids: ${JSON.stringify(boardIds)}) {
             columns(types: date) {
               id
               title
             }
           }
         }`;
-    let response = await monday.api(query);
-    column_values.push(response.data.boards[0].columns);
-  }
-  return column_values; // Assuming one board is returned
+  let response = await monday.api(query);
+  return response.data.boards;
 };
-const getStatusColumns = async () => {
-  const boards = await getBoards();
-  let column_values = [];
+const getStatusColumns = async (boardIds) => {
   // Execute queries for each board and get people columns
-  for (const board of boards) {
-    let query = `query {
-          boards(ids: ${board.id}) {
-            columns(types: date) {
+  let query = `query {
+          boards(ids: ${JSON.stringify(boardIds)}) {
+            columns(types: status) {
               id
               title
             }
           }
         }`;
-    let response = await monday.api(query);
-    column_values.push(response.data.boards[0].columns);
-  }
-  return column_values; // Assuming one board is returned
+  let response = await monday.api(query);
+  console.log(response);
+  return response.data.boards;
 };
-
+const getTimeTrackingColmns = async (boardIds) => {
+  // Execute queries for each board and get people columns
+  let query = `query {
+          boards(ids: ${JSON.stringify(boardIds)}) {
+            columns(types: time_tracking) {
+              id
+              title
+            }
+          }
+        }`;
+  let response = await monday.api(query);
+  return response.data.boards;
+};
 const getPersonValues = async (PeopleIds, boardIds) => {
   // Convert the arrays into GraphQL-compatible strings
 
@@ -166,12 +161,7 @@ const getDateValuesAndgetTimeTrackingValue = async (DateIds, boardIds) => {
 };
 
 const main = async () => {
-  let final = await getPeopleColumns();
-  console.log(final);
-  let columnid = [];
-  final.map((column) => column.map((value) => columnid.push(value.id)));
-  console.log(columnid);
-  let ff = await getStatusValues(columnid, ["7574082160"]);
-  console.log(ff);
+  let final = await getTimeTrackingColmns([7574082160, 8144313397]);
+  console.dir(final, { depth: null });
 };
 main();
