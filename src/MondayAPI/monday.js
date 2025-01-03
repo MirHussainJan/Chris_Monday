@@ -7,21 +7,25 @@ monday.setToken(
 
 const getBoards = async () =>
 {
-  let monday_query =`{
-    boards(limit: 500, workspace_ids: 8359320) {
-      id
-      name
-    }
-  }`
+  let monday_query =`query
+{
+  boards(workspace_ids:8359320)
+  {
+    id
+    name
+}
+}
+}`
   let response = await monday.api(monday_query)
-  let ids = []
+  let BoardsData = []
+  console.log("Boards: ",response.data.boards)
   response.data.boards.forEach(board => {
     if(board.id != "7574081999")
     {
-    ids.push(board.id)
+    BoardsData.push(board.id)
     }
   })
-return ids  
+return BoardsData  
 }
 
 //function to get the board items
@@ -365,6 +369,6 @@ const getProfilePicturesOfTeams = async (teamIds) => {
 //   "time_tracking__1"
 // );
 
-export { getBoardItems, getProfilePicturesOfUsers, getProfilePicturesOfTeams, getBoards};
+export { getBoardItems, getProfilePicturesOfUsers, getProfilePicturesOfTeams, getBoards as getBoards};
 
 //Board Selection is Necessary
