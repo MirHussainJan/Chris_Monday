@@ -12,20 +12,35 @@ const getBoards = async () => {
   {
     id
     name
-    items_page(limit: 500)
-    {
-			items
-      {
-        name
-        group
-        {
-          title
 }
+}`;
+  let response = await monday.api(query2);
+
+  let boards = response.data.boards;
+  const filteredBoards = boards.filter(
+    (board, index, self) =>
+      self.findIndex((b) => b.id === board.id) === index &&
+      board.id !== "7574081999"
+  );
+  return filteredBoards;
+};
+
+const getBoardsData = async (boardIds) => {
+  let query = `{
+  boards(limit: 500, ids: ${JSON.stringify(boardIds)}) {
+    id
+    name
+    items_page(limit: 500) {
+      items {
+        name
+        group {
+          title
+        }
       }
     }
   }
 }`;
-  let response = await monday.api(query2);
+  let response = await monday.api(query);
   return response.data.boards;
 };
 
@@ -85,7 +100,7 @@ const getPersonValues = async (PeopleIds, boardIds) => {
 
   // Construct the query with dynamic data
   let query = `query {
-    boards(ids: ${boardIds}) {
+    boards(ids: ${JSON.stringify(boardIds)}) {
       items_page(limit: 500) {
         items {
           column_values(ids: ${JSON.stringify(PeopleIds)}) {
@@ -111,7 +126,7 @@ const getStatusValues = async (StatusIds, boardIds) => {
 
   // Construct the query with dynamic data
   let query = `query {
-  boards(ids: ${boardIds}) {
+  boards(ids: ${JSON.stringify(boardIds)}) {
     name
     items_page(limit: 500)
     {
@@ -141,7 +156,7 @@ const getDateValuesAndgetTimeTrackingValue = async (DateIds, boardIds) => {
 
   // Construct the query with dynamic data
   let query = `query {
-  boards(ids: ${boardIds}) {
+  boards(ids: ${JSON.stringify(boardIds)}) {
     name
     items_page(limit: 500)
     {
@@ -161,7 +176,7 @@ const getDateValuesAndgetTimeTrackingValue = async (DateIds, boardIds) => {
 };
 
 const main = async () => {
-  let final = await getTimeTrackingColmns([7574082160, 8144313397]);
+  let final = await getBoardsData([7574082160, 8144290011]);
   console.dir(final, { depth: null });
 };
 main();
