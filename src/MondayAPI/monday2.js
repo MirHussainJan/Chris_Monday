@@ -30,6 +30,7 @@ const getBoardsData = async (boardIds) => {
       name
       items_page(limit: 500) {
         items {
+        id
           name
           group {
             title
@@ -104,6 +105,7 @@ const getPersonValues = async (PeopleIds, boardIds) => {
     id
       items_page(limit: 500) {
         items {
+        id
           column_values(ids: ${JSON.stringify(PeopleIds)}) {
             ... on PeopleValue {
             id
@@ -169,7 +171,8 @@ const main = async () => {
     [7574082160, 8144313397]
   );
   let data2 = await getPeopleColumns([7574082160, 8144313397]);
-  return data;
+  let data3 = await getBoardsData([7574082160, 8144313397]);
+  return data3;
 };
 
 (async () => {
