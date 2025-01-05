@@ -57,10 +57,11 @@ const CustomizationSidebar = ({
     }
   };
 
-  const handleColumnSelection = (columnId, isChecked) => {
+  const handleColumnSelection = (columnId, boardId, isChecked) => {
+    const columnKey = `${columnId}@${boardId}`;
     const updatedColumns = isChecked
-      ? [...selectedPeopleColumns, columnId]
-      : selectedPeopleColumns.filter((id) => id !== columnId);
+      ? [...selectedPeopleColumns, columnKey]
+      : selectedPeopleColumns.filter((key) => key !== columnKey);
     setSelectedPeopleColumns(updatedColumns);
   };
 
@@ -90,14 +91,19 @@ const CustomizationSidebar = ({
           {loadingColumns ? (
             <p>Loading columns...</p>
           ) : (
-            peopleColumns.map((col) => (
-              <Checkbox
-                key={col.id}
-                label={col.title}
-                checked={selectedPeopleColumns.includes(col.id)}
-                onChange={(e) => handleColumnSelection(col.id, e.target.checked)}
-              />
-            ))
+            peopleColumns.map((col) => {
+              const columnKey = `${col.id}@${col.boardId}`;
+              return (
+                <Checkbox
+                  key={columnKey}
+                  label={`${col.title} (Board: ${col.boardId})`}
+                  checked={selectedPeopleColumns.includes(columnKey)}
+                  onChange={(e) =>
+                    handleColumnSelection(col.id, col.boardId, e.target.checked)
+                  }
+                />
+              );
+            })
           )}
         </div>
       )}

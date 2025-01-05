@@ -17,7 +17,8 @@ const getBoards = async () => {
   let boards = response.data.boards;
   const filteredBoards = boards.filter(
     (board, index, self) =>
-      self.findIndex((b) => b.id === board.id) === index && board.id !== "7574081999"
+      self.findIndex((b) => b.id === board.id) === index &&
+      board.id !== "7574081999"
   );
   return filteredBoards;
 };
@@ -44,6 +45,7 @@ const getBoardsData = async (boardIds) => {
 const getPeopleColumns = async (boardIds) => {
   let query = `query {
     boards(ids: ${JSON.stringify(boardIds)}) {
+      id
       columns(types: people) {
         id
         title
@@ -57,6 +59,7 @@ const getPeopleColumns = async (boardIds) => {
 const getDateColumns = async (boardIds) => {
   let query = `query {
     boards(ids: ${JSON.stringify(boardIds)}) {
+    id
       columns(types: date) {
         id
         title
@@ -70,6 +73,7 @@ const getDateColumns = async (boardIds) => {
 const getStatusColumns = async (boardIds) => {
   let query = `query {
     boards(ids: ${JSON.stringify(boardIds)}) {
+    id
       columns(types: status) {
         id
         title
@@ -83,6 +87,7 @@ const getStatusColumns = async (boardIds) => {
 const getTimeTrackingColumns = async (boardIds) => {
   let query = `query {
     boards(ids: ${JSON.stringify(boardIds)}) {
+    id
       columns(types: time_tracking) {
         id
         title
@@ -96,10 +101,12 @@ const getTimeTrackingColumns = async (boardIds) => {
 const getPersonValues = async (PeopleIds, boardIds) => {
   let query = `query {
     boards(ids: ${JSON.stringify(boardIds)}) {
+    id
       items_page(limit: 500) {
         items {
           column_values(ids: ${JSON.stringify(PeopleIds)}) {
             ... on PeopleValue {
+            id
               text
               persons_and_teams {
                 id
@@ -118,11 +125,12 @@ const getPersonValues = async (PeopleIds, boardIds) => {
 const getStatusValues = async (StatusIds, boardIds) => {
   let query = `query {
     boards(ids: ${JSON.stringify(boardIds)}) {
-      name
+      id
       items_page(limit: 500) {
         items {
           column_values(ids: ${JSON.stringify(StatusIds)}) {
             ... on StatusValue {
+            id
               label_style {
                 color
               }
@@ -140,10 +148,11 @@ const getStatusValues = async (StatusIds, boardIds) => {
 const getDateValuesAndTimeTrackingValue = async (DateIds, boardIds) => {
   let query = `query {
     boards(ids: ${JSON.stringify(boardIds)}) {
-      name
+      id
       items_page(limit: 500) {
         items {
           column_values(ids: ${JSON.stringify(DateIds)}) {
+          id
             text
           }
         }
@@ -155,15 +164,18 @@ const getDateValuesAndTimeTrackingValue = async (DateIds, boardIds) => {
 };
 
 const main = async () => {
-  let data = await getPersonValues(["person","person"],[7574082160,8144313397])
-  return data[0].items_page;
+  let data = await getPersonValues(
+    ["person", "person"],
+    [7574082160, 8144313397]
+  );
+  let data2 = await getPeopleColumns([7574082160, 8144313397]);
+  return data;
 };
 
 (async () => {
-  let a = await main()
-  console.dir(a, {depth:null});
+  let a = await main();
+  console.dir(a, { depth: null });
 })();
-
 
 // Export functions
 module.exports = {
