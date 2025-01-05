@@ -130,6 +130,7 @@ const getStatusValues = async (StatusIds, boardIds) => {
       id
       items_page(limit: 500) {
         items {
+        id
           column_values(ids: ${JSON.stringify(StatusIds)}) {
             ... on StatusValue {
             id
@@ -153,6 +154,7 @@ const getDateValuesAndTimeTrackingValue = async (DateIds, boardIds) => {
       id
       items_page(limit: 500) {
         items {
+        id
           column_values(ids: ${JSON.stringify(DateIds)}) {
           id
             text
