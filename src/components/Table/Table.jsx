@@ -13,8 +13,8 @@ import { useEffect, useState } from "react";
 import { getBoardsData, getPersonValues } from "../../MondayAPI/monday2";
 
 const Table = ({ boardIds, selectedPeopleColumns }) => {
-  const [data, setData] = useState([]);
-  const [personData, setPersonData] = useState({}); // { boardId: { columnId: value } }
+  const [data, setData] = useState([]); // Holds board and item data
+  const [personData, setPersonData] = useState({}); // { itemId: { columnId: value } }
 
   const defaultColumns = [
     { id: "name", title: "Item Name" },
@@ -33,9 +33,10 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
   useEffect(() => {
     const fetchData = async () => {
       if (boardIds.length > 0) {
+        // Fetch board data
         const boardData = await getBoardsData(boardIds);
 
-        // Merge all items from all boards with board ID
+        // Extract and merge items from all boards
         const mergedData = boardData.reduce((acc, board) => {
           if (board.items_page) {
             acc.push(
@@ -48,32 +49,33 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
           return acc;
         }, []);
         setData(mergedData);
-        console.log(selectedPeopleColumns);
 
         if (selectedPeopleColumns.length > 0) {
+          // Parse selectedPeopleColumns to extract column and board IDs
           const columnBoardMapping = selectedPeopleColumns.map((col) => {
             const [columnId, boardId] = col.split("@");
             return { columnId, boardId };
           });
 
+          // Fetch person values
           const personValues = await getPersonValues(
             columnBoardMapping.map((c) => c.columnId),
             columnBoardMapping.map((c) => c.boardId)
           );
 
+          // Create a mapping of itemId to columnId and values
           const mapping = {};
           personValues.forEach((board) => {
-            const boardId = board.id;
-            if (!mapping[boardId]) mapping[boardId] = {};
-
             board.items_page.items.forEach((item) => {
+              const itemId = item.id;
+              if (!mapping[itemId]) mapping[itemId] = {};
               item.column_values.forEach((col) => {
-                mapping[boardId][col.id] = col.text || "-";
+                mapping[itemId][col.id] = col.text || "-";
               });
             });
           });
 
-          setPersonData(mapping); // Data grouped by boardId and columnId
+          setPersonData(mapping);
         }
       }
     };
@@ -113,13 +115,13 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
 
             {/* Dynamic people columns */}
             {selectedPeopleColumns.map((col) => {
-              const [columnId, columnBoardId] = col.split("@"); // e.g., person@boardId
+              const [columnId, columnBoardId] = col.split("@");
 
-              // Only show value if boardId matches
+              // Only show value if boardId matches and item exists in personData
               const value =
-                item.boardId === columnBoardId && personData[item.boardId]
-                  ? personData[item.boardId][columnId]
-                  : null;
+                item.boardId === columnBoardId &&
+                personData[item.id] &&
+                personData[item.id][columnId];
 
               return (
                 <TableCell key={col}>

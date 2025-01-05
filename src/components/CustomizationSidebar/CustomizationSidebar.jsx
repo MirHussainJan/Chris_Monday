@@ -36,7 +36,7 @@ const CustomizationSidebar = ({
       : selectedBoardIds.filter((id) => id !== boardId);
     setSelectedBoardIds(updatedBoardIds);
 
-    if (updatedBoardIds.length > 0) {
+    if (isChecked) {
       setLoadingColumns(true);
       try {
         const fetchedColumns = await getPeopleColumns(updatedBoardIds);
@@ -53,7 +53,17 @@ const CustomizationSidebar = ({
         setLoadingColumns(false);
       }
     } else {
-      setPeopleColumns([]);
+      // Remove columns associated with the deselected board
+      const filteredColumns = selectedPeopleColumns.filter(
+        (columnKey) => !columnKey.endsWith(`@${boardId}`)
+      );
+      setSelectedPeopleColumns(filteredColumns);
+
+      // Update available columns by excluding those from the deselected board
+      const updatedPeopleColumns = peopleColumns.filter(
+        (column) => column.boardId !== boardId
+      );
+      setPeopleColumns(updatedPeopleColumns);
     }
   };
 
