@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { Checkbox, Button } from "monday-ui-react-core";
-import { getBoards, getPeopleColumns } from "../../MondayAPI/monday2";
+import { getBoards, getColumns } from "../../MondayAPI/monday2"; // Generic function to get columns
 
 const CustomizationSidebar = ({
   isOpen,
   onClose,
   selectedBoardIds,
   setSelectedBoardIds,
-  selectedPeopleColumns,
-  setSelectedPeopleColumns,
+  selectedColumns,
+  setSelectedColumns,
 }) => {
   const [boards, setBoards] = useState([]);
-  const [peopleColumns, setPeopleColumns] = useState([]);
+  const [columns, setColumns] = useState([]);
   const [loadingBoards, setLoadingBoards] = useState(false);
   const [loadingColumns, setLoadingColumns] = useState(false);
 
@@ -39,40 +39,39 @@ const CustomizationSidebar = ({
     if (isChecked) {
       setLoadingColumns(true);
       try {
-        const fetchedColumns = await getPeopleColumns(updatedBoardIds);
+        const fetchedColumns = await getColumns(updatedBoardIds); // Fetch all column types
         const allColumns = fetchedColumns.flatMap((board) =>
           board.columns.map((column) => ({
             ...column,
-            boardId: board.id, // Associate column with its board
+            boardId: board.id,
           }))
         );
-        setPeopleColumns(allColumns);
+        setColumns(allColumns);
       } catch (error) {
-        console.error("Error fetching people columns:", error);
+        console.error("Error fetching columns:", error);
       } finally {
         setLoadingColumns(false);
       }
     } else {
-      // Remove columns associated with the deselected board
-      const filteredColumns = selectedPeopleColumns.filter(
-        (columnKey) => !columnKey.endsWith(`@${boardId}`)
+      // Remove deselected board's columns
+      const filteredColumns = selectedColumns.filter(
+        (colKey) => !colKey.endsWith(`@${boardId}`)
       );
-      setSelectedPeopleColumns(filteredColumns);
+      setSelectedColumns(filteredColumns);
 
-      // Update available columns by excluding those from the deselected board
-      const updatedPeopleColumns = peopleColumns.filter(
+      const updatedColumns = columns.filter(
         (column) => column.boardId !== boardId
       );
-      setPeopleColumns(updatedPeopleColumns);
+      setColumns(updatedColumns);
     }
   };
 
   const handleColumnSelection = (columnId, boardId, isChecked) => {
     const columnKey = `${columnId}@${boardId}`;
     const updatedColumns = isChecked
-      ? [...selectedPeopleColumns, columnKey]
-      : selectedPeopleColumns.filter((key) => key !== columnKey);
-    setSelectedPeopleColumns(updatedColumns);
+      ? [...selectedColumns, columnKey]
+      : selectedColumns.filter((key) => key !== columnKey);
+    setSelectedColumns(updatedColumns);
   };
 
   if (!isOpen) return null;
@@ -95,19 +94,19 @@ const CustomizationSidebar = ({
           ))
         )}
       </div>
-      {peopleColumns.length > 0 && (
+      {columns.length > 0 && (
         <div>
-          <h4>Select People Columns</h4>
+          <h4>Select Columns</h4>
           {loadingColumns ? (
             <p>Loading columns...</p>
           ) : (
-            peopleColumns.map((col) => {
+            columns.map((col) => {
               const columnKey = `${col.id}@${col.boardId}`;
               return (
                 <Checkbox
                   key={columnKey}
                   label={`${col.title} (Board: ${col.boardId})`}
-                  checked={selectedPeopleColumns.includes(columnKey)}
+                  checked={selectedColumns.includes(columnKey)}
                   onChange={(e) =>
                     handleColumnSelection(col.id, col.boardId, e.target.checked)
                   }
