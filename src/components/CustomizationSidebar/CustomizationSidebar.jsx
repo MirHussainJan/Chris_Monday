@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Checkbox, Button } from "monday-ui-react-core";
-import { getBoards, getColumns } from "../../MondayAPI/monday2"; // Generic function to get columns
+import React, { useEffect, useState } from "react";
+import { getBoardsData } from "../../MondayAPI/monday2";
 
 const CustomizationSidebar = ({
   isOpen,
@@ -11,118 +10,69 @@ const CustomizationSidebar = ({
   setSelectedColumns,
 }) => {
   const [boards, setBoards] = useState([]);
-  const [columns, setColumns] = useState([]);
-  const [loadingBoards, setLoadingBoards] = useState(false);
-  const [loadingColumns, setLoadingColumns] = useState(false);
+  const [columns, setColumns] = useState({}); // { boardId: [columns] }
 
   useEffect(() => {
     const fetchBoards = async () => {
-      setLoadingBoards(true);
-      try {
-        const fetchedBoards = await getBoards();
-        setBoards(fetchedBoards);
-      } catch (error) {
-        console.error("Error fetching boards:", error);
-      } finally {
-        setLoadingBoards(false);
-      }
+      const boardsData = await getBoardsData(); // Fetch all boards
+      setBoards(boardsData);
     };
     fetchBoards();
   }, []);
 
-  const handleBoardSelection = async (boardId, isChecked) => {
-    const updatedBoardIds = isChecked
-      ? [...selectedBoardIds, boardId]
-      : selectedBoardIds.filter((id) => id !== boardId);
+  const handleBoardSelection = async (boardId) => {
+    const updatedBoardIds = selectedBoardIds.includes(boardId)
+      ? selectedBoardIds.filter((id) => id !== boardId)
+      : [...selectedBoardIds, boardId];
+
     setSelectedBoardIds(updatedBoardIds);
 
-    if (isChecked) {
-      setLoadingColumns(true);
-      try {
-        const fetchedColumns = await getColumns(updatedBoardIds); // Fetch all column types
-        const allColumns = fetchedColumns.flatMap((board) =>
-          board.columns.map((column) => ({
-            ...column,
-            boardId: board.id,
-          }))
-        );
-        setColumns(allColumns);
-      } catch (error) {
-        console.error("Error fetching columns:", error);
-      } finally {
-        setLoadingColumns(false);
-      }
-    } else {
-      // Remove deselected board's columns
-      const filteredColumns = selectedColumns.filter(
-        (colKey) => !colKey.endsWith(`@${boardId}`)
-      );
-      setSelectedColumns(filteredColumns);
-
-      const updatedColumns = columns.filter(
-        (column) => column.boardId !== boardId
-      );
-      setColumns(updatedColumns);
+    if (!columns[boardId]) {
+      const boardData = await getBoardsData([boardId]); // Fetch columns for selected board
+      const boardColumns = boardData[0]?.columns || [];
+      setColumns((prev) => ({ ...prev, [boardId]: boardColumns }));
     }
   };
 
-  const handleColumnSelection = (columnId, boardId, isChecked) => {
-    const columnKey = `${columnId}@${boardId}`;
-    const updatedColumns = isChecked
-      ? [...selectedColumns, columnKey]
-      : selectedColumns.filter((key) => key !== columnKey);
-    setSelectedColumns(updatedColumns);
+  const handleColumnSelection = (columnId) => {
+    setSelectedColumns((prev) =>
+      prev.includes(columnId)
+        ? prev.filter((id) => id !== columnId)
+        : [...prev, columnId]
+    );
   };
 
-  if (!isOpen) return null;
-
-  return (
+  return isOpen ? (
     <div className="sidebar">
-      <h3>Customization Sidebar</h3>
-      <div>
-        <h4>Select Boards</h4>
-        {loadingBoards ? (
-          <p>Loading boards...</p>
-        ) : (
-          boards.map((board) => (
-            <Checkbox
-              key={board.id}
-              label={board.name}
+      <button onClick={onClose}>Close Sidebar</button>
+      <h2>Boards</h2>
+      {boards.map((board) => (
+        <div key={board.id}>
+          <label>
+            <input
+              type="checkbox"
               checked={selectedBoardIds.includes(board.id)}
-              onChange={(e) => handleBoardSelection(board.id, e.target.checked)}
+              onChange={() => handleBoardSelection(board.id)}
             />
-          ))
-        )}
-      </div>
-      {columns.length > 0 && (
-        <div>
-          <h4>Select Columns</h4>
-          {loadingColumns ? (
-            <p>Loading columns...</p>
-          ) : (
-            columns.map((col) => {
-              const columnKey = `${col.id}@${col.boardId}`;
-              return (
-                <Checkbox
-                  key={columnKey}
-                  label={`${col.title} (Board: ${col.boardId})`}
-                  checked={selectedColumns.includes(columnKey)}
-                  onChange={(e) =>
-                    handleColumnSelection(col.id, col.boardId, e.target.checked)
-                  }
-                />
-              );
-            })
-          )}
+            {board.name}
+          </label>
+          {selectedBoardIds.includes(board.id) &&
+            columns[board.id]?.map((column) => (
+              <div key={column.id} style={{ marginLeft: "20px" }}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={selectedColumns.includes(column.id)}
+                    onChange={() => handleColumnSelection(column.id)}
+                  />
+                  {column.title}
+                </label>
+              </div>
+            ))}
         </div>
-      )}
-      <div style={{ marginTop: "20px" }}>
-        <Button onClick={onClose} kind={Button.kinds.PRIMARY}>
-          Close
-        </Button>
-      </div>
+      ))}
     </div>
-  );
+  ) : null;
 };
 
 export default CustomizationSidebar;
