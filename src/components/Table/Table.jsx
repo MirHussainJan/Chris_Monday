@@ -10,7 +10,13 @@ import {
 import TableEmptyState from "./TableEmptyState";
 import TableErrorState from "./TableErrorState";
 import { useEffect, useState } from "react";
-import { getBoardsData, getPersonValues } from "../../MondayAPI/monday2";
+import {
+  getBoardsData,
+  getPersonValues,
+  getStatusValues,
+  getDateValues,
+  getTimeTrackingValues, // Import the time tracking function
+} from "../../MondayAPI/monday2";
 
 const Table = ({ boardIds, selectedPeopleColumns }) => {
   const [data, setData] = useState([]); // Holds board and item data
@@ -21,61 +27,123 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
     { id: "group", title: "Group" },
   ];
 
-  // Create the columns based on selected columns
+  // Utility function to format dates
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return date.toLocaleDateString(); // Format as desired
+  };
+
+  // Utility function to format time tracking duration
+  const formatDuration = (seconds) => {
+    if (!seconds || isNaN(seconds)) return "-";
+  
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
+  
+    if (hours > 0) {
+      // For durations greater than or equal to an hour
+      return `${hours}h ${minutes}m ${remainingSeconds}s`;
+    }
+  
+    // For durations less than an hour
+    return `${minutes}m ${remainingSeconds}s`;
+  };
+
+  // Parse column data for display
+  const parsedColumns = selectedPeopleColumns.map((col) => {
+    const [columnId, boardId] = col.split("@");
+    return { columnId, boardId, title: columnId }; // title can be adjusted if needed
+  });
+
   const columns = [
     ...defaultColumns,
-    ...selectedPeopleColumns.map((column) => ({
-      id: column, // e.g., 'person@boardId'
-      title: column,
+    ...parsedColumns.map((col) => ({
+      id: col.columnId,
+      title: `Column: ${col.columnId}`, // Correcting string interpolation here
     })),
   ];
 
   useEffect(() => {
     const fetchData = async () => {
+      console.log("From Table:", columns);
       if (boardIds.length > 0) {
-        // Fetch board data
-        const boardData = await getBoardsData(boardIds);
+        try {
+          const boardData = await getBoardsData(boardIds);
 
-        // Extract and merge items from all boards
-        const mergedData = boardData.reduce((acc, board) => {
-          if (board.items_page) {
-            acc.push(
-              ...board.items_page.items.map((item) => ({
-                ...item,
-                boardId: board.id,
-              }))
+          // Merge items from all boards
+          const mergedData = boardData.reduce((acc, board) => {
+            if (board.items_page) {
+              acc.push(
+                ...board.items_page.items.map((item) => ({
+                  ...item,
+                  boardId: board.id,
+                }))
+              );
+            }
+            return acc;
+          }, []);
+          setData(mergedData);
+
+          if (selectedPeopleColumns.length > 0) {
+            const columnBoardMapping = parsedColumns.map(({ columnId, boardId }) => ({
+              columnId,
+              boardId,
+            }));
+
+            // Fetch person, status, date, and time tracking values
+            const personValues = await getPersonValues(
+              columnBoardMapping.map((c) => c.columnId),
+              columnBoardMapping.map((c) => c.boardId)
             );
-          }
-          return acc;
-        }, []);
-        setData(mergedData);
 
-        if (selectedPeopleColumns.length > 0) {
-          // Parse selectedPeopleColumns to extract column and board IDs
-          const columnBoardMapping = selectedPeopleColumns.map((col) => {
-            const [columnId, boardId] = col.split("@");
-            return { columnId, boardId };
-          });
+            const statusColumns = parsedColumns.filter((col) => col.columnId.includes("status"));
+            const statusColumnIds = statusColumns.map((col) => col.columnId);
+            const statusValues = await getStatusValues(
+              statusColumnIds,
+              columnBoardMapping.map((c) => c.boardId)
+            );
 
-          // Fetch person values
-          const personValues = await getPersonValues(
-            columnBoardMapping.map((c) => c.columnId),
-            columnBoardMapping.map((c) => c.boardId)
-          );
+            const dateColumns = parsedColumns.filter((col) => col.columnId.includes("date"));
+            const dateColumnIds = dateColumns.map((col) => col.columnId);
+            const dateValues = await getDateValues(
+              dateColumnIds,
+              columnBoardMapping.map((c) => c.boardId)
+            );
 
-          // Create a mapping of itemId to columnId and values
-          const mapping = {};
-          personValues.forEach((board) => {
-            board.items_page.items.forEach((item) => {
-              const itemId = item.id;
-              if (!mapping[itemId]) mapping[itemId] = {};
-              item.column_values.forEach((col) => {
-                mapping[itemId][col.id] = col.text || "-";
+            const timeTrackingColumns = parsedColumns.filter((col) =>
+              col.columnId.includes("time_tracking")
+            );
+            const timeTrackingColumnIds = timeTrackingColumns.map((col) => col.columnId);
+            const timeTrackingValues = await getTimeTrackingValues(
+              timeTrackingColumnIds,
+              columnBoardMapping.map((c) => c.boardId)
+            );
+
+            // Combine data from all values
+            const mapping = {};
+            const mergeValues = (values, valueKey = "text") => {
+              values.forEach((board) => {
+                board.items_page.items.forEach((item) => {
+                  const itemId = item.id;
+                  if (!mapping[itemId]) mapping[itemId] = {};
+                  item.column_values.forEach((col) => {
+                    mapping[itemId][col.id] = col[valueKey] || "-";
+                  });
+                });
               });
-            });
-          });
+            };
 
-          setPersonData(mapping);
+            mergeValues(personValues);
+            mergeValues(statusValues);
+            mergeValues(dateValues);
+            mergeValues(timeTrackingValues, "duration"); // Use "duration" key for time tracking
+
+            setPersonData(mapping);
+          }
+        } catch (error) {
+          console.error("Error fetching data:", error);
         }
       }
     };
@@ -91,11 +159,7 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
     >
       <TableHeader>
         {columns.map((col) => (
-          <TableHeaderCell
-            key={col.id}
-            title={col.title}
-            className="table-header"
-          />
+          <TableHeaderCell key={col.id} title={col.title} className="table-header" />
         ))}
       </TableHeader>
       <TableBody>
@@ -109,24 +173,27 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
             <TableCell>
               <Label
                 text={item.group?.title || "-"}
-                className={`color-${item.group?.color || "default"}`}
+                className={`color-${item.group?.color || "default"}`} // Corrected string interpolation here
               />
             </TableCell>
 
-            {/* Dynamic people columns */}
-            {selectedPeopleColumns.map((col) => {
-              const [columnId, columnBoardId] = col.split("@");
-
-              // Only show value if boardId matches and item exists in personData
+            {/* Dynamic columns */}
+            {parsedColumns.map(({ columnId, boardId }) => {
               const value =
-                item.boardId === columnBoardId &&
+                item.boardId === boardId &&
                 personData[item.id] &&
                 personData[item.id][columnId];
 
+              const displayValue = columnId.includes("date")
+                ? formatDate(value)
+                : columnId.includes("time_tracking")
+                ? formatDuration(value)
+                : value;
+
               return (
-                <TableCell key={col}>
-                  {value
-                    ? value.split(", ").map((val, idx) => (
+                <TableCell key={`${item.id}-${columnId}`}>
+                  {displayValue
+                    ? displayValue.split(", ").map((val, idx) => (
                         <div key={idx}>{val}</div> // Display each value on a new line
                       ))
                     : "-"}

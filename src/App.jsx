@@ -1,10 +1,10 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import Table from "./components/Table/Table";
 import CustomizationSidebar from "./components/CustomizationSidebar/CustomizationSidebar";
 
 const App = () => {
   const [selectedBoardIds, setSelectedBoardIds] = useState([]);
-  const [selectedPeopleColumns, setSelectedPeopleColumns] = useState([]);
+  const [selectedColumns, setSelectedColumns] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   return (
@@ -15,14 +15,14 @@ const App = () => {
         onClose={() => setIsSidebarOpen(false)}
         selectedBoardIds={selectedBoardIds}
         setSelectedBoardIds={setSelectedBoardIds}
-        selectedPeopleColumns={selectedPeopleColumns}
-        setSelectedPeopleColumns={setSelectedPeopleColumns}
+        selectedColumns={selectedColumns}
+        setSelectedColumns={setSelectedColumns}
       />
       <h2>Board Data</h2>
       {selectedBoardIds.length > 0 ? (
         <Table
-          boardIds={selectedBoardIds} // Pass selected board IDs to Table
-          selectedPeopleColumns={selectedPeopleColumns} // Pass selected columns to Table
+          boardIds={selectedBoardIds}
+          selectedPeopleColumns={selectedColumns || []}  // Ensure an empty array if undefined
         />
       ) : (
         <p>Select boards and columns from the sidebar to see their data.</p>
