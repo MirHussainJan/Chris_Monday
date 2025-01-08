@@ -190,9 +190,9 @@ const getTimeTrackingValues = async (TimeTrackingIds, boardIds) => {
 };
  
 const main = async () => {
-  let data = await getTimeTrackingValues(
-    ["time_tracking__1", "time_tracking_mkktjak1"],
-    [7574082160, 8144313397]
+  let data = await getStatusValues(
+    ["status"],
+    [7574082160]
   );
   let data2 = await getStatusColumns([7574082160, 8144313397]);
   let data3 = await getBoardsData([7574082160, 8144313397]);

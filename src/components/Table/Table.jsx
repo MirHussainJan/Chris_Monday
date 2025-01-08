@@ -1,15 +1,17 @@
+import React, { useEffect, useState } from "react";
 import {
-  Label,
   Table as MondayTable,
-  TableBody,
-  TableCell,
   TableHeader,
   TableHeaderCell,
+  TableBody,
   TableRow,
+  TableCell,
+  Label,
 } from "monday-ui-react-core";
-import TableEmptyState from "./TableEmptyState";
-import TableErrorState from "./TableErrorState";
-import { useEffect, useState } from "react";
+import SkeletonLoader from "./SkeletonLoader";
+import "monday-ui-react-core/dist/main.css";
+import "tailwindcss/tailwind.css";
+
 import {
   getBoardsData,
   getPersonValues,
@@ -19,13 +21,32 @@ import {
 } from "../../MondayAPI/monday2";
 
 const Table = ({ boardIds, selectedPeopleColumns }) => {
-  const [data, setData] = useState([]); // Holds board and item data
-  const [personData, setPersonData] = useState({}); // { itemId: { columnId: value } }
+  const [data, setData] = useState([]);
+  const [personData, setPersonData] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [loadingCells, setLoadingCells] = useState({});
 
   const defaultColumns = [
     { id: "name", title: "Item Name" },
     { id: "group", title: "Group" },
   ];
+
+  const statusColors = {
+    "Not Started": "gray",
+    "Working on it": "#fdab3d",
+    Done: "#00c875",
+    Stuck: "#df2f4a",
+    "": "#007eb5",
+    null: "#c4c4c4",
+  };
+
+  const priorityColors = {
+    "High Priority": "red",
+    "Medium Priority": "orange",
+    "Low Priority": "green",
+    Urgent: "purple",
+    Normal: "blue",
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return "-";
@@ -54,13 +75,15 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
     ...defaultColumns,
     ...parsedColumns.map((col) => ({
       id: col.columnId,
-      title: `Column: ${col.columnId}`,
+      title: col.columnId,
     })),
   ];
 
   useEffect(() => {
     const fetchData = async () => {
       if (boardIds.length > 0) {
+        setLoading(true);
+
         try {
           const boardData = await getBoardsData(boardIds);
 
@@ -83,7 +106,6 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
               boardId,
             }));
 
-            // Fetch only for selected columns
             const personColumns = columnBoardMapping.filter(({ columnId }) =>
               columnId.includes("person")
             );
@@ -125,7 +147,6 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
                 )
               : [];
 
-            // Combine data from selected columns
             const mapping = {};
             const mergeValues = (values, valueKey = "text") => {
               values.forEach((board) => {
@@ -149,6 +170,8 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
           }
         } catch (error) {
           console.error("Error fetching data:", error);
+        } finally {
+          setLoading(false);
         }
       }
     };
@@ -157,51 +180,90 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
   }, [boardIds, selectedPeopleColumns]);
 
   return (
-    <MondayTable
-      columns={columns}
-      emptyState={<TableEmptyState />}
-      errorState={<TableErrorState />}
-    >
-      <TableHeader>
-        {columns.map((col) => (
-          <TableHeaderCell key={col.id} title={col.title} className="table-header" />
-        ))}
-      </TableHeader>
-      <TableBody>
-        {data.map((item, index) => (
-          <TableRow key={item.id} className={index % 2 === 0 ? "even-row" : "odd-row"}>
-            {/* Default columns */}
-            <TableCell>{item.name || "-"}</TableCell>
-            <TableCell>
-              <Label
-                text={item.group?.title || "-"}
-                className={`color-${item.group?.color || "default"}`}
-              />
-            </TableCell>
+    <div className="flex justify-center">
+      <MondayTable
+        columns={columns}
+        className="border border-gray-300 rounded-lg overflow-hidden w-full"
+      >
+        <TableHeader>
+          {columns.map((col) => (
+            <TableHeaderCell
+              key={col.id}
+              title={col.title}
+              className="text-center font-semibold text-sm"
+            />
+          ))}
+        </TableHeader>
+        <TableBody>
+          {loading
+            ? Array.from({ length: 5 }).map((_, index) => (
+                <TableRow key={`skeleton-${index}`} className="bg-gray-50">
+                  {columns.map((col) => (
+                    <TableCell
+                      key={`${index}-${col.id}`}
+                      className="px-4 py-2 text-center"
+                    >
+                      <SkeletonLoader />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            : data.map((item, index) => (
+                <TableRow
+                  key={item.id}
+                  className={`${
+                    index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                  } hover:bg-blue-50`}
+                >
+                  {/* Default columns */}
+                  <TableCell className="px-4 py-2 border-r text-center">
+                    {item.name || "-"}
+                  </TableCell>
+                  <TableCell className="px-4 py-2 border-r text-center">
+                    <Label text={item.group?.title || "-"} color="primary" />
+                  </TableCell>
 
-            {/* Dynamic columns */}
-            {parsedColumns.map(({ columnId, boardId }) => {
-              const value =
-                item.boardId === boardId &&
-                personData[item.id] &&
-                personData[item.id][columnId];
+                  {/* Dynamic columns */}
+                  {parsedColumns.map(({ columnId, boardId }) => {
+                    const value =
+                      item.boardId === boardId &&
+                      personData[item.id] &&
+                      personData[item.id][columnId];
 
-              const displayValue = columnId.includes("date")
-                ? formatDate(value)
-                : columnId.includes("time_tracking")
-                ? formatDuration(value)
-                : value;
+                    const displayValue = columnId.includes("date")
+                      ? formatDate(value)
+                      : columnId.includes("time_tracking")
+                      ? formatDuration(value)
+                      : value;
 
-              return (
-                <TableCell key={`${item.id}-${columnId}`}>
-                  {displayValue || "-"}
-                </TableCell>
-              );
-            })}
-          </TableRow>
-        ))}
-      </TableBody>
-    </MondayTable>
+                    const bgColor =
+                      columnId.includes("status") && statusColors[value]
+                        ? statusColors[value]
+                        : columnId.includes("priority") && priorityColors[value]
+                        ? priorityColors[value]
+                        : "";
+
+                    return (
+                      <TableCell
+                        key={`${item.id}-${columnId}`}
+                        className={`px-4 py-2 border-r text-center`}
+                        style={{ backgroundColor: bgColor }}
+                      >
+                        {loadingCells[item.id]?.[columnId] ? (
+                          <SkeletonLoader />
+                        ) : columnId.includes("date") ? (
+                          <Label text={displayValue || "-"} color="primary" />
+                        ) : (
+                          displayValue || "-"
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))}
+        </TableBody>
+      </MondayTable>
+    </div>
   );
 };
 

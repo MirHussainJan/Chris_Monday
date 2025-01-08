@@ -7,6 +7,54 @@
   box-sizing: border-box;
 }
 
+/* Status and Priority Colors */
+.status-gray {
+  background-color: #d3d3d3;
+  color: #333;
+}
+
+.status-blue {
+  background-color: #add8e6;
+  color: #0044cc;
+}
+
+.status-yellow {
+  background-color: #fffacd;
+  color: #996600;
+}
+
+.status-purple {
+  background-color: #e6e6fa;
+  color: #663399;
+}
+
+.status-green {
+  background-color: #90ee90;
+  color: #006400;
+}
+
+.status-red {
+  background-color: #ffcccb;
+  color: #cc0000;
+}
+
+.status-orange {
+  background-color: #ffdab9;
+  color: #e65100;
+}
+
+/* Common style for status and priority labels */
+.status-class {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 0.875rem;
+  font-weight: bold;
+  text-align: center;
+  white-space: nowrap;
+}
+
+
 .sidebar {
   position: fixed;
   right: 0;
@@ -106,6 +154,27 @@ body::-webkit-scrollbar-thumb {
   background: #888; /* Color of the scrollbar thumb */
   border-radius: 10px; /* Rounded corners */
 }
+
+.skeleton-loader {
+  background: linear-gradient(
+    90deg,
+    #e0e0e0 25%,
+    #f2f2f2 50%,
+    #e0e0e0 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
 
 body::-webkit-scrollbar-thumb:hover {
   background: #555; /* Hover effect for the scrollbar thumb */
