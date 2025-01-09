@@ -72,6 +72,10 @@
   margin-bottom: 20px;
 }
 
+::-webkit-scrollbar{
+  display: none !important;
+}
+
 .sidebar h4 {
   font-size: 16px;
   margin-bottom: 10px;
@@ -80,6 +84,10 @@
 /* Colors of Groups */
 .color-orange span {
   background-color: orange !important;
+}
+
+.bg-test{
+  background-color: #006400 !important;
 }
 
 .color-blue span {
@@ -136,23 +144,60 @@
   z-index: 10;
 }
 
+/* App container styling */
+.app-container {
+  padding: 32px;
+}
+
+/* Header section styling */
+.header {
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e5e5e5;
+  padding-bottom: 16px;
+}
+
+/* Styling for "Tasks" text to make it bigger */
+.tasks-text {
+  font-size: 36px !important; /* You can adjust the size as needed */
+  font-weight: bold !important;
+}
+
+/* Nav container styling */
+.nav-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+/* Group One: SearchBar and Dropdown styling */
+.left-group {
+  display: flex;
+  gap: 16px;
+}
+
+/* Dropdown styling */
+.dropdown {
+  width: 200px !important; /* Ensure dropdown is wide */
+  z-index: 9999 !important; /* Ensure dropdown is above other elements */
+}
+
+/* Group Two: Icon and Customize button styling */
+.customize-btn {
+  display: flex;
+  align-items: center;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.customize-text {
+  margin-right: 8px;
+}
+
+
 .background-dropdown {
   background-color: #d1ecef;
-}
-/* Reduce the width of the default vertical scrollbar */
-html {
-  scrollbar-width: thin; /* For Firefox */
-  scrollbar-color: #888 #f1f1f1; /* For Firefox */
-}
-
-body::-webkit-scrollbar {
-  width: 6px; /* Width of the vertical scrollbar */
-  
-}
-
-body::-webkit-scrollbar-thumb {
-  background: #888; /* Color of the scrollbar thumb */
-  border-radius: 10px; /* Rounded corners */
 }
 
 .skeleton-loader {

@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Checkbox, Button } from "monday-ui-react-core";
+import { ExpandCollapse, Checkbox, Button } from "monday-ui-react-core";
+import "monday-ui-react-core/dist/main.css";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
+import { IoClose } from "react-icons/io5"; // Importing the close icon
+
 import {
   getBoards,
   getPeopleColumns,
@@ -17,7 +22,10 @@ const CustomizationSidebar = ({
   setSelectedColumns,
 }) => {
   const [boards, setBoards] = useState([]);
-  const [columns, setColumns] = useState([]);
+  const [peopleColumns, setPeopleColumns] = useState([]);
+  const [statusColumns, setStatusColumns] = useState([]);
+  const [dateColumns, setDateColumns] = useState([]);
+  const [timeTrackingColumns, setTimeTrackingColumns] = useState([]);
   const [loadingBoards, setLoadingBoards] = useState(false);
   const [loadingColumns, setLoadingColumns] = useState(false);
 
@@ -26,7 +34,6 @@ const CustomizationSidebar = ({
       setLoadingBoards(true);
       try {
         const fetchedBoards = await getBoards();
-        console.log("Fetched Boards:", fetchedBoards); // Debug log for boards
         setBoards(fetchedBoards);
       } catch (error) {
         console.error("Error fetching boards:", error);
@@ -47,48 +54,45 @@ const CustomizationSidebar = ({
     if (isChecked) {
       setLoadingColumns(true);
       try {
-        const peopleColumns = await getPeopleColumns([boardId]);
-        const dateColumns = await getDateColumns([boardId]);
-        const statusColumns = await getStatusColumns([boardId]);
-        const timeTrackingColumns = await getTimeTrackingColumns([boardId]);
+        const fetchedPeopleColumns = await getPeopleColumns([boardId]);
+        const fetchedDateColumns = await getDateColumns([boardId]);
+        const fetchedStatusColumns = await getStatusColumns([boardId]);
+        const fetchedTimeTrackingColumns = await getTimeTrackingColumns([boardId]);
 
-        // Debugging the fetched columns
-        console.log("People Columns:", peopleColumns);
-        console.log("Date Columns:", dateColumns);
-        console.log("Status Columns:", statusColumns);
-        console.log("Time Tracking Columns:", timeTrackingColumns);
-
-        const allColumns = [
-          ...peopleColumns.flatMap((board) =>
-            board.columns.map((col) => ({ ...col, boardId: boardId }))
+        setPeopleColumns((prev) => [
+          ...prev,
+          ...fetchedPeopleColumns.flatMap((board) =>
+            board.columns.map((col) => ({ ...col, boardId }))
           ),
-          ...dateColumns.flatMap((board) =>
-            board.columns.map((col) => ({ ...col, boardId: boardId }))
+        ]);
+        setDateColumns((prev) => [
+          ...prev,
+          ...fetchedDateColumns.flatMap((board) =>
+            board.columns.map((col) => ({ ...col, boardId }))
           ),
-          ...statusColumns.flatMap((board) =>
-            board.columns.map((col) => ({ ...col, boardId: boardId }))
+        ]);
+        setStatusColumns((prev) => [
+          ...prev,
+          ...fetchedStatusColumns.flatMap((board) =>
+            board.columns.map((col) => ({ ...col, boardId }))
           ),
-          ...timeTrackingColumns.flatMap((board) =>
-            board.columns.map((col) => ({ ...col, boardId: boardId }))
+        ]);
+        setTimeTrackingColumns((prev) => [
+          ...prev,
+          ...fetchedTimeTrackingColumns.flatMap((board) =>
+            board.columns.map((col) => ({ ...col, boardId }))
           ),
-        ];
-
-        // Debugging the columns after adding
-        console.log("All Columns:", allColumns);
-
-        setColumns((prevColumns) => [...prevColumns, ...allColumns]);
+        ]);
       } catch (error) {
         console.error("Error fetching columns:", error);
       } finally {
         setLoadingColumns(false);
       }
     } else {
-      // Remove columns related to the unchecked board
-      setColumns((prevColumns) =>
-        prevColumns.filter((col) => col.boardId !== boardId)
-      );
-
-      // Remove selected columns related to the unchecked board
+      setPeopleColumns((prev) => prev.filter((col) => col.boardId !== boardId));
+      setDateColumns((prev) => prev.filter((col) => col.boardId !== boardId));
+      setStatusColumns((prev) => prev.filter((col) => col.boardId !== boardId));
+      setTimeTrackingColumns((prev) => prev.filter((col) => col.boardId !== boardId));
       setSelectedColumns((prevSelectedColumns) =>
         prevSelectedColumns.filter((key) => !key.endsWith(`@${boardId}`))
       );
@@ -106,19 +110,78 @@ const CustomizationSidebar = ({
 
   if (!isOpen) return null;
 
-  const groupedColumns = columns.reduce((acc, col) => {
-    acc[col.boardId] = acc[col.boardId] || [];
-    acc[col.boardId].push(col);
-    return acc;
-  }, {});
+  const renderSkeleton = (count) => (
+    <div className="mb-3">
+      {Array.from({ length: count }).map((_, idx) => (
+        <Skeleton key={idx} height={25} width="100%" className="mb-2" />
+      ))}
+    </div>
+  );
+
+  const renderColumnsSection = (title, columns) => {
+    if (loadingColumns) return renderSkeleton(5);
+    if (columns.length === 0) return null;
+    return (
+      <ExpandCollapse
+        title={
+          <span
+            className="truncate-text"
+            title={title}
+            style={{
+              maxWidth: "200px",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {title}
+          </span>
+        }
+        isExpanded
+      >
+        {columns.map((col) => {
+          const columnKey = `${col.id}@${col.boardId}`;
+          const board = boards.find((b) => b.id === col.boardId);
+          return (
+            <div key={columnKey} className="mb-2">
+              <Checkbox
+                label={`${col.title} (${board?.name || col.boardId})`}
+                checked={selectedColumns.includes(columnKey)}
+                onChange={(e) =>
+                  handleColumnSelection(col.id, col.boardId, e.target.checked)
+                }
+              />
+            </div>
+          );
+        })}
+      </ExpandCollapse>
+    );
+  };
 
   return (
-    <div className="sidebar">
-      <h3>Customization Sidebar</h3>
-      <div>
-        <h4>Select Boards</h4>
+    <div
+      className="sidebar p-4 bg-white border border-gray-300 rounded-lg shadow-lg"
+      style={{
+        maxHeight: "99vh",
+        overflowY: "auto",
+        overflowX: "hidden",
+      }}
+    >
+      {/* Close Icon */}
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold">Customize</h3>
+        <IoClose
+          size={24}
+          className="cursor-pointer"
+          onClick={onClose}
+          title="Close"
+        />
+      </div>
+
+      {/* Boards Section */}
+      <ExpandCollapse title="Boards" isExpanded>
         {loadingBoards ? (
-          <p>Loading boards...</p>
+          renderSkeleton(5)
         ) : (
           boards.map((board) => (
             <Checkbox
@@ -126,41 +189,28 @@ const CustomizationSidebar = ({
               label={board.name}
               checked={selectedBoardIds.includes(board.id)}
               onChange={(e) => handleBoardSelection(board.id, e.target.checked)}
+              className="!my-3"
             />
           ))
         )}
-      </div>
-      {Object.keys(groupedColumns).length > 0 && (
-        <div>
-          <h4>Select Columns</h4>
-          {loadingColumns ? (
-            <p>Loading columns...</p>
-          ) : (
-            Object.entries(groupedColumns).map(([boardId, cols]) => {
-              const board = boards.find((b) => b.id === boardId);
-              return (
-                <div key={boardId}>
-                  <h5>Board: {board ? board.name : boardId}</h5>
-                  {cols.map((col) => {
-                    const columnKey = `${col.id}@${col.boardId}`;
-                    return (
-                      <Checkbox
-                        key={columnKey}
-                        label={col.title}
-                        checked={selectedColumns.includes(columnKey)}
-                        onChange={(e) =>
-                          handleColumnSelection(col.id, col.boardId, e.target.checked)
-                        }
-                      />
-                    );
-                  })}
-                </div>
-              );
-            })
+      </ExpandCollapse>
+
+      {/* Columns Sections */}
+      {selectedBoardIds.length > 0 && (
+        <>
+          {loadingColumns && renderSkeleton(5)}
+          {!loadingColumns && (
+            <>
+              {renderColumnsSection("People Columns", peopleColumns)}
+              {renderColumnsSection("Status Columns", statusColumns)}
+              {renderColumnsSection("Date Columns", dateColumns)}
+              {renderColumnsSection("Time Tracking Columns", timeTrackingColumns)}
+            </>
           )}
-        </div>
+        </>
       )}
-      <div style={{ marginTop: "20px" }}>
+
+      <div className="mt-2 flex justify-end">
         <Button onClick={onClose} kind={Button.kinds.PRIMARY}>
           Close
         </Button>

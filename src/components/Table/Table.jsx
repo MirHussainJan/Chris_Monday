@@ -25,6 +25,7 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
   const [personData, setPersonData] = useState({});
   const [loading, setLoading] = useState(false);
   const [loadingCells, setLoadingCells] = useState({});
+  const [showSummary, setShowSummary] = useState(false); // Track summary visibility
 
   const defaultColumns = [
     { id: "name", title: "Item Name" },
@@ -179,13 +180,51 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
     fetchData();
   }, [boardIds, selectedPeopleColumns]);
 
+  // Function to toggle the visibility of the summary
+  const toggleSummary = () => {
+    setShowSummary(!showSummary);
+  };
+
+  // Calculate summary data
+  const calculateSummary = () => {
+    const totalPeople = new Set();
+    let totalTime = 0;
+    const taskStatus = {};
+
+    data.forEach((item) => {
+      parsedColumns.forEach(({ columnId, boardId }) => {
+        const value = item.boardId === boardId && personData[item.id] && personData[item.id][columnId];
+
+        if (columnId.includes("person") && value) {
+          totalPeople.add(value);
+        }
+
+        if (columnId.includes("status") && value) {
+          taskStatus[value] = taskStatus[value] ? taskStatus[value] + 1 : 1;
+        }
+
+        if (columnId.includes("time_tracking") && value) {
+          totalTime += value; // Assuming 'value' is in seconds
+        }
+      });
+    });
+
+    return {
+      totalPeople: totalPeople.size,
+      taskStatus,
+      totalTime: formatDuration(totalTime),
+    };
+  };
+
+  const summary = calculateSummary();
+
   return (
-    <div className="flex justify-center">
+    <div className="flex flex-col items-center">
       <MondayTable
         columns={columns}
         className="border border-gray-300 rounded-lg overflow-hidden w-full"
       >
-        <TableHeader>
+        <TableHeader className="text-center">
           {columns.map((col) => (
             <TableHeaderCell
               key={col.id}
@@ -194,7 +233,7 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
             />
           ))}
         </TableHeader>
-        <TableBody>
+        <TableBody className="text-center">
           {loading
             ? Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={`skeleton-${index}`} className="bg-gray-50">
@@ -215,7 +254,6 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
                     index % 2 === 0 ? "bg-white" : "bg-gray-50"
                   } hover:bg-blue-50`}
                 >
-                  {/* Default columns */}
                   <TableCell className="px-4 py-2 border-r text-center">
                     {item.name || "-"}
                   </TableCell>
@@ -223,7 +261,6 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
                     <Label text={item.group?.title || "-"} color="primary" />
                   </TableCell>
 
-                  {/* Dynamic columns */}
                   {parsedColumns.map(({ columnId, boardId }) => {
                     const value =
                       item.boardId === boardId &&
@@ -239,7 +276,8 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
                     const bgColor =
                       columnId.includes("status") && statusColors[value]
                         ? statusColors[value]
-                        : columnId.includes("priority") && priorityColors[value]
+                        : columnId.includes("priority") &&
+                          priorityColors[value]
                         ? priorityColors[value]
                         : "";
 
@@ -249,7 +287,7 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
                         className={`px-4 py-2 border-r text-center`}
                         style={{ backgroundColor: bgColor }}
                       >
-                        {loadingCells[item.id]?.[columnId] ? (
+                        {loading ? (
                           <SkeletonLoader />
                         ) : columnId.includes("date") ? (
                           <Label text={displayValue || "-"} color="primary" />
@@ -263,6 +301,36 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
               ))}
         </TableBody>
       </MondayTable>
+
+      {/* Summary Toggle Button */}
+      <button
+        onClick={toggleSummary}
+        className="mt-4 bg-blue-500 text-white px-4 py-2 rounded"
+      >
+        {showSummary ? "Hide Summary" : "Show Summary"}
+      </button>
+
+      {/* Summary Display */}
+      {showSummary && (
+        <div className="mt-4 p-4 border border-gray-300 rounded-lg w-full text-center">
+          <p>
+            <strong>Total People Working on Tasks:</strong> {summary.totalPeople}
+          </p>
+          <p>
+            <strong>Status Breakdown:</strong>
+            <ul>
+              {Object.entries(summary.taskStatus).map(([status, count]) => (
+                <li key={status}>
+                  <strong>{status}</strong>: {count}
+                </li>
+              ))}
+            </ul>
+          </p>
+          <p>
+            <strong>Total Time Tracked:</strong> {summary.totalTime}
+          </p>
+        </div>
+      )}
     </div>
   );
 };
