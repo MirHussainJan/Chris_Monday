@@ -20,12 +20,11 @@ import {
   getTimeTrackingValues,
 } from "../../MondayAPI/monday2";
 
-const Table = ({ boardIds, selectedPeopleColumns }) => {
+const Table = ({ boardIds, selectedPeopleColumns, view }) => {
   const [data, setData] = useState([]);
   const [personData, setPersonData] = useState({});
   const [loading, setLoading] = useState(false);
-  const [loadingCells, setLoadingCells] = useState({});
-  const [showSummary, setShowSummary] = useState(false); // Track summary visibility
+  const [expandedBoards, setExpandedBoards] = useState({});
 
   const defaultColumns = [
     { id: "name", title: "Item Name" },
@@ -39,14 +38,6 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
     Stuck: "#df2f4a",
     "": "#007eb5",
     null: "#c4c4c4",
-  };
-
-  const priorityColors = {
-    "High Priority": "red",
-    "Medium Priority": "orange",
-    "Low Priority": "green",
-    Urgent: "purple",
-    Normal: "blue",
   };
 
   const formatDate = (dateString) => {
@@ -84,7 +75,7 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
     const fetchData = async () => {
       if (boardIds.length > 0) {
         setLoading(true);
-
+        console.log()
         try {
           const boardData = await getBoardsData(boardIds);
 
@@ -94,6 +85,7 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
                 ...board.items_page.items.map((item) => ({
                   ...item,
                   boardId: board.id,
+                  boardName: board.name,
                 }))
               );
             }
@@ -169,6 +161,13 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
 
             setPersonData(mapping);
           }
+
+          // Initialize board expand/collapse state
+          const initialExpandedState = boardIds.reduce(
+            (acc, boardId) => ({ ...acc, [boardId]: true }),
+            {}
+          );
+          setExpandedBoards(initialExpandedState);
         } catch (error) {
           console.error("Error fetching data:", error);
         } finally {
@@ -180,157 +179,101 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
     fetchData();
   }, [boardIds, selectedPeopleColumns]);
 
-  // Function to toggle the visibility of the summary
-  const toggleSummary = () => {
-    setShowSummary(!showSummary);
+  const toggleBoardExpansion = (boardId) => {
+    setExpandedBoards((prevState) => ({
+      ...prevState,
+      [boardId]: !prevState[boardId],
+    }));
   };
 
-  // Calculate summary data
-  const calculateSummary = () => {
-    const totalPeople = new Set();
-    let totalTime = 0;
-    const taskStatus = {};
-
-    data.forEach((item) => {
-      parsedColumns.forEach(({ columnId, boardId }) => {
-        const value = item.boardId === boardId && personData[item.id] && personData[item.id][columnId];
-
-        if (columnId.includes("person") && value) {
-          totalPeople.add(value);
-        }
-
-        if (columnId.includes("status") && value) {
-          taskStatus[value] = taskStatus[value] ? taskStatus[value] + 1 : 1;
-        }
-
-        if (columnId.includes("time_tracking") && value) {
-          totalTime += value; // Assuming 'value' is in seconds
-        }
-      });
-    });
-
-    return {
-      totalPeople: totalPeople.size,
-      taskStatus,
-      totalTime: formatDuration(totalTime),
-    };
-  };
-
-  const summary = calculateSummary();
+  const groupedData = data.reduce((acc, item) => {
+    if (!acc[item.boardId]) {
+      acc[item.boardId] = {
+        boardName: item.boardName,
+        items: [],
+      };
+    }
+    acc[item.boardId].items.push(item);
+    return acc;
+  }, {});
 
   return (
-    <div className="flex flex-col items-center">
-      <MondayTable
-        columns={columns}
-        className="border border-gray-300 rounded-lg overflow-hidden w-full"
-      >
-        <TableHeader className="text-center">
-          {columns.map((col) => (
-            <TableHeaderCell
-              key={col.id}
-              title={col.title}
-              className="text-center font-semibold text-sm"
-            />
-          ))}
-        </TableHeader>
-        <TableBody className="text-center">
-          {loading
-            ? Array.from({ length: 5 }).map((_, index) => (
-                <TableRow key={`skeleton-${index}`} className="bg-gray-50">
-                  {columns.map((col) => (
-                    <TableCell
-                      key={`${index}-${col.id}`}
-                      className="px-4 py-2 text-center"
-                    >
-                      <SkeletonLoader />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            : data.map((item, index) => (
-                <TableRow
-                  key={item.id}
-                  className={`${
-                    index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                  } hover:bg-blue-50`}
-                >
-                  <TableCell className="px-4 py-2 border-r text-center">
-                    {item.name || "-"}
-                  </TableCell>
-                  <TableCell className="px-4 py-2 border-r text-center">
-                    <Label text={item.group?.title || "-"} color="primary" />
-                  </TableCell>
-
-                  {parsedColumns.map(({ columnId, boardId }) => {
-                    const value =
-                      item.boardId === boardId &&
-                      personData[item.id] &&
-                      personData[item.id][columnId];
-
-                    const displayValue = columnId.includes("date")
-                      ? formatDate(value)
-                      : columnId.includes("time_tracking")
-                      ? formatDuration(value)
-                      : value;
-
-                    const bgColor =
-                      columnId.includes("status") && statusColors[value]
-                        ? statusColors[value]
-                        : columnId.includes("priority") &&
-                          priorityColors[value]
-                        ? priorityColors[value]
-                        : "";
-
-                    return (
-                      <TableCell
-                        key={`${item.id}-${columnId}`}
-                        className={`px-4 py-2 border-r text-center`}
-                        style={{ backgroundColor: bgColor }}
-                      >
-                        {loading ? (
-                          <SkeletonLoader />
-                        ) : columnId.includes("date") ? (
-                          <Label text={displayValue || "-"} color="primary" />
-                        ) : (
-                          displayValue || "-"
-                        )}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
-        </TableBody>
-      </MondayTable>
-
-      {/* Summary Toggle Button */}
-      <button
-        onClick={toggleSummary}
-        className="mt-4 bg-blue-500 text-white px-4 py-2 rounded"
-      >
-        {showSummary ? "Hide Summary" : "Show Summary"}
-      </button>
-
-      {/* Summary Display */}
-      {showSummary && (
-        <div className="mt-4 p-4 border border-gray-300 rounded-lg w-full text-center">
-          <p>
-            <strong>Total People Working on Tasks:</strong> {summary.totalPeople}
-          </p>
-          <p>
-            <strong>Status Breakdown:</strong>
-            <ul>
-              {Object.entries(summary.taskStatus).map(([status, count]) => (
-                <li key={status}>
-                  <strong>{status}</strong>: {count}
-                </li>
-              ))}
-            </ul>
-          </p>
-          <p>
-            <strong>Total Time Tracked:</strong> {summary.totalTime}
-          </p>
+    <div className="flex flex-col items-center w-full">
+      {loading && (
+        <div className="text-center">
+          <SkeletonLoader />
         </div>
       )}
+      {!loading &&
+        Object.entries(groupedData).map(([boardId, boardData]) => (
+          <div
+            key={boardId}
+            className="mb-4 border border-gray-300 rounded-lg w-full"
+          >
+            <div
+              className="bg-gray-200 p-4 cursor-pointer flex justify-between items-center"
+              onClick={() => toggleBoardExpansion(boardId)}
+            >
+              <h2 className="text-lg font-semibold">
+                {boardData.boardName || `Board ${boardId}`}
+              </h2>
+              <span>
+                {expandedBoards[boardId] ? "▼ Collapse" : "▶ Expand"}
+              </span>
+            </div>
+
+            {expandedBoards[boardId] && (
+              <MondayTable
+                columns={columns}
+                className="border-t border-gray-300 overflow-hidden w-full"
+              >
+                <TableHeader className="text-center">
+                  {columns.map((col) => (
+                    <TableHeaderCell
+                      key={col.id}
+                      title={col.title}
+                      className="text-center font-semibold text-sm"
+                    />
+                  ))}
+                </TableHeader>
+                <TableBody className="text-center">
+                  {boardData.items.map((item, index) => (
+                    <TableRow
+                      key={item.id}
+                      className={`${
+                        index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                      } hover:bg-blue-50`}
+                    >
+                      <TableCell className="px-4 py-2 border-r text-center">
+                        {item.name || "-"}
+                      </TableCell>
+                      <TableCell className="px-4 py-2 border-r text-center">
+                        <Label
+                          text={item.group?.title || "-"}
+                          color="primary"
+                        />
+                      </TableCell>
+                      {parsedColumns.map(({ columnId }) => {
+                        const value =
+                          personData[item.id] &&
+                          personData[item.id][columnId];
+
+                        return (
+                          <TableCell
+                            key={`${item.id}-${columnId}`}
+                            className="px-4 py-2 border-r text-center"
+                          >
+                            {value || "-"}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </MondayTable>
+            )}
+          </div>
+        ))}
     </div>
   );
 };

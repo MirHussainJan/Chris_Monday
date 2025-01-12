@@ -28,6 +28,7 @@ const CustomizationSidebar = ({
   const [timeTrackingColumns, setTimeTrackingColumns] = useState([]);
   const [loadingBoards, setLoadingBoards] = useState(false);
   const [loadingColumns, setLoadingColumns] = useState(false);
+  const [columnsCache, setColumnsCache] = useState({}); // Cache for fetched columns
 
   useEffect(() => {
     const fetchBoards = async () => {
@@ -52,43 +53,51 @@ const CustomizationSidebar = ({
     setSelectedBoardIds(updatedBoardIds);
 
     if (isChecked) {
-      setLoadingColumns(true);
-      try {
-        const fetchedPeopleColumns = await getPeopleColumns([boardId]);
-        const fetchedDateColumns = await getDateColumns([boardId]);
-        const fetchedStatusColumns = await getStatusColumns([boardId]);
-        const fetchedTimeTrackingColumns = await getTimeTrackingColumns([boardId]);
+      // Check if columns are already cached
+      if (columnsCache[boardId]) {
+        const cachedColumns = columnsCache[boardId];
+        setPeopleColumns((prev) => [...prev, ...cachedColumns.people]);
+        setDateColumns((prev) => [...prev, ...cachedColumns.date]);
+        setStatusColumns((prev) => [...prev, ...cachedColumns.status]);
+        setTimeTrackingColumns((prev) => [...prev, ...cachedColumns.timeTracking]);
+      } else {
+        // Fetch columns if not cached
+        setLoadingColumns(true);
+        try {
+          const fetchedPeopleColumns = await getPeopleColumns([boardId]);
+          const fetchedDateColumns = await getDateColumns([boardId]);
+          const fetchedStatusColumns = await getStatusColumns([boardId]);
+          const fetchedTimeTrackingColumns = await getTimeTrackingColumns([boardId]);
 
-        setPeopleColumns((prev) => [
-          ...prev,
-          ...fetchedPeopleColumns.flatMap((board) =>
-            board.columns.map((col) => ({ ...col, boardId }))
-          ),
-        ]);
-        setDateColumns((prev) => [
-          ...prev,
-          ...fetchedDateColumns.flatMap((board) =>
-            board.columns.map((col) => ({ ...col, boardId }))
-          ),
-        ]);
-        setStatusColumns((prev) => [
-          ...prev,
-          ...fetchedStatusColumns.flatMap((board) =>
-            board.columns.map((col) => ({ ...col, boardId }))
-          ),
-        ]);
-        setTimeTrackingColumns((prev) => [
-          ...prev,
-          ...fetchedTimeTrackingColumns.flatMap((board) =>
-            board.columns.map((col) => ({ ...col, boardId }))
-          ),
-        ]);
-      } catch (error) {
-        console.error("Error fetching columns:", error);
-      } finally {
-        setLoadingColumns(false);
+          const newColumns = {
+            people: fetchedPeopleColumns.flatMap((board) =>
+              board.columns.map((col) => ({ ...col, boardId }))
+            ),
+            date: fetchedDateColumns.flatMap((board) =>
+              board.columns.map((col) => ({ ...col, boardId }))
+            ),
+            status: fetchedStatusColumns.flatMap((board) =>
+              board.columns.map((col) => ({ ...col, boardId }))
+            ),
+            timeTracking: fetchedTimeTrackingColumns.flatMap((board) =>
+              board.columns.map((col) => ({ ...col, boardId }))
+            ),
+          };
+
+          // Update the state and cache
+          setPeopleColumns((prev) => [...prev, ...newColumns.people]);
+          setDateColumns((prev) => [...prev, ...newColumns.date]);
+          setStatusColumns((prev) => [...prev, ...newColumns.status]);
+          setTimeTrackingColumns((prev) => [...prev, ...newColumns.timeTracking]);
+          setColumnsCache((prev) => ({ ...prev, [boardId]: newColumns }));
+        } catch (error) {
+          console.error("Error fetching columns:", error);
+        } finally {
+          setLoadingColumns(false);
+        }
       }
     } else {
+      // Remove columns for deselected board
       setPeopleColumns((prev) => prev.filter((col) => col.boardId !== boardId));
       setDateColumns((prev) => prev.filter((col) => col.boardId !== boardId));
       setStatusColumns((prev) => prev.filter((col) => col.boardId !== boardId));
