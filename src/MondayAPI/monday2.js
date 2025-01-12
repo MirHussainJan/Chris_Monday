@@ -203,12 +203,31 @@ const main = async () => {
   let a = await main();
   console.dir(a, { depth: null });
 })();
+
+const getProfilePicturesOfUsers = async (userIds) => {
+  //construct query
+  let query = `query {
+                users(limit: 500 ids: [${userIds.map((id) => id).join(",")}]) {
+                  id
+                  photo_thumb_small
+                }
+              }`;
+
+  try {
+    const response = await monday.api(query);
+    return response.data.users;
+  } catch (error) {
+    console.error("Error: ", error);
+    return [];
+  }
+};
  
 // Export functions
 module.exports = {
   getBoards,
   getBoardsData,
   getPeopleColumns,
+  getProfilePicturesOfUsers,
   getDateColumns,
   getStatusColumns,
   getTimeTrackingColumns,

@@ -73,22 +73,19 @@ const App = () => {
           }}
         >
           <FaCog size={18} style={{ marginRight: "8px" }} />{" "}
-          {/* React Icon (settings) */}
           <span>Customize</span>
         </Button>
       </div>
 
       {/* Sidebar */}
-      {isSidebarOpen && (
-        <CustomizationSidebar
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          selectedBoardIds={selectedBoardIds}
-          setSelectedBoardIds={setSelectedBoardIds}
-          selectedColumns={selectedColumns}
-          setSelectedColumns={setSelectedColumns}
-        />
-      )}
+      <CustomizationSidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        selectedBoardIds={selectedBoardIds}
+        setSelectedBoardIds={setSelectedBoardIds}
+        selectedColumns={selectedColumns}
+        setSelectedColumns={setSelectedColumns}
+      />
 
       {/* Main Content */}
       <div>

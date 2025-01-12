@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ExpandCollapse, Checkbox, Button } from "monday-ui-react-core";
+import { ExpandCollapse, Checkbox, Button, Dropdown } from "monday-ui-react-core";
 import "monday-ui-react-core/dist/main.css";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
@@ -102,22 +102,26 @@ const CustomizationSidebar = ({
       setDateColumns((prev) => prev.filter((col) => col.boardId !== boardId));
       setStatusColumns((prev) => prev.filter((col) => col.boardId !== boardId));
       setTimeTrackingColumns((prev) => prev.filter((col) => col.boardId !== boardId));
+
       setSelectedColumns((prevSelectedColumns) =>
         prevSelectedColumns.filter((key) => !key.endsWith(`@${boardId}`))
       );
     }
   };
 
-  const handleColumnSelection = (columnId, boardId, isChecked) => {
+  const handleColumnSelection = (columnId, boardId, type) => {
     const columnKey = `${columnId}@${boardId}`;
-    const updatedSelectedColumns = isChecked
-      ? [...selectedColumns, columnKey]
-      : selectedColumns.filter((key) => key !== columnKey);
+
+    // Update selectedColumns array by removing the previous selection for the same type and adding the new one
+    const updatedSelectedColumns = selectedColumns.filter(
+      (key) => !key.startsWith(`${type}@`)
+    );
+
+    // Add the newly selected column
+    updatedSelectedColumns.push(columnKey);
 
     setSelectedColumns(updatedSelectedColumns);
   };
-
-  if (!isOpen) return null;
 
   const renderSkeleton = (count) => (
     <div className="mb-3">
@@ -127,9 +131,10 @@ const CustomizationSidebar = ({
     </div>
   );
 
-  const renderColumnsSection = (title, columns) => {
+  const renderColumnsSection = (title, columns, type) => {
     if (loadingColumns) return renderSkeleton(5);
     if (columns.length === 0) return null;
+
     return (
       <ExpandCollapse
         title={
@@ -148,32 +153,31 @@ const CustomizationSidebar = ({
         }
         isExpanded
       >
-        {columns.map((col) => {
-          const columnKey = `${col.id}@${col.boardId}`;
-          const board = boards.find((b) => b.id === col.boardId);
-          return (
-            <div key={columnKey} className="mb-2">
-              <Checkbox
-                label={`${col.title} (${board?.name || col.boardId})`}
-                checked={selectedColumns.includes(columnKey)}
-                onChange={(e) =>
-                  handleColumnSelection(col.id, col.boardId, e.target.checked)
-                }
-              />
-            </div>
-          );
-        })}
+        <Dropdown
+          options={columns.map((col) => ({
+            value: `${col.id}@${col.boardId}`,
+            label: `${col.title} (${boards.find((b) => b.id === col.boardId)?.name || col.boardId})`,
+          }))}
+          value={selectedColumns.find((key) => key.startsWith(`${type}@`)) || ''}
+          onChange={(e) => handleColumnSelection(e.value.split('@')[0], e.value.split('@')[1], type)}
+          placeholder={`Select ${title}`}
+          style={{ width: '100%' }}
+        />
       </ExpandCollapse>
     );
   };
 
   return (
     <div
-      className="sidebar p-4 bg-white border border-gray-300 rounded-lg shadow-lg"
+      className={`sidebar p-4 bg-white border border-gray-300 rounded-lg shadow-lg fixed top-0 right-0 h-full transition-all duration-300 ${
+        isOpen ? "transform translate-x-0" : "transform translate-x-full"
+      }`}
       style={{
-        maxHeight: "99vh",
+        maxHeight: "100vh",
         overflowY: "auto",
         overflowX: "hidden",
+        width: "300px !important", // Adjust sidebar width as needed
+        zIndex: "1000 !important", // Make sure sidebar stays on top
       }}
     >
       {/* Close Icon */}
@@ -188,7 +192,7 @@ const CustomizationSidebar = ({
       </div>
 
       {/* Boards Section */}
-      <ExpandCollapse title="Boards" isExpanded>
+      <ExpandCollapse title="Boards" className="my-3" isExpanded>
         {loadingBoards ? (
           renderSkeleton(5)
         ) : (
@@ -198,7 +202,7 @@ const CustomizationSidebar = ({
               label={board.name}
               checked={selectedBoardIds.includes(board.id)}
               onChange={(e) => handleBoardSelection(board.id, e.target.checked)}
-              className="!my-3"
+              className="my-2"
             />
           ))
         )}
@@ -207,19 +211,14 @@ const CustomizationSidebar = ({
       {/* Columns Sections */}
       {selectedBoardIds.length > 0 && (
         <>
-          {loadingColumns && renderSkeleton(5)}
-          {!loadingColumns && (
-            <>
-              {renderColumnsSection("People Columns", peopleColumns)}
-              {renderColumnsSection("Status Columns", statusColumns)}
-              {renderColumnsSection("Date Columns", dateColumns)}
-              {renderColumnsSection("Time Tracking Columns", timeTrackingColumns)}
-            </>
-          )}
+          {renderColumnsSection("People Columns", peopleColumns, "people")}
+          {renderColumnsSection("Status Columns", statusColumns, "status")}
+          {renderColumnsSection("Date Columns", dateColumns, "date")}
+          {renderColumnsSection("Time Tracking Columns", timeTrackingColumns, "timeTracking")}
         </>
       )}
 
-      <div className="mt-2 flex justify-end">
+      <div className="mt-5 flex justify-end">
         <Button onClick={onClose} kind={Button.kinds.PRIMARY}>
           Close
         </Button>
