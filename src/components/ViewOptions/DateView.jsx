@@ -1,90 +1,125 @@
-import React, { useState } from "react";
-import "monday-ui-react-core/dist/main.css";
-import { MdKeyboardArrowRight } from "react-icons/md";
-import Text from "monday-ui-react-core/dist/Text";
-import Table from "../Table/Table";
+import React, { useMemo } from "react";
+import {
+  Accordion,
+  AccordionItem,
+  Table,
+  TableHeader,
+  TableHeaderCell,
+  TableBody,
+  TableRow,
+  TableCell,
+} from "monday-ui-react-core";
+import { Text } from "monday-ui-react-core";
 
-// Mock Data Example
-const companiesData = [
-  { name: "Current" },
-  { name: "Past" },
-  { name: "Future" },
-];
+// Function to categorize tasks based on their due date
+const categorizeByDate = (data) => {
+  const currentDate = new Date().setHours(0, 0, 0, 0); // Normalize current date to midnight
+  const pastTasks = [];
+  const currentTasks = [];
+  const futureTasks = [];
+  const invalidTasks = []; // To keep tasks with invalid or missing dates
 
-const getFilteredData = (data, dateStatus) => {
-  const currentDate = new Date();
-  return data.filter((item) => {
-    const itemDate = new Date(item.date); // Assuming your `data` has a `date` field
-    if (dateStatus === "Current") {
-      return (
-        itemDate.toDateString() === currentDate.toDateString()
-      ); // Same date as today
+  data.forEach((task) => {
+    const taskDate = task.enrichedColumns?.date4
+      ? new Date(task.enrichedColumns.date4).setHours(0, 0, 0, 0)
+      : null;
+
+    if (!taskDate || isNaN(taskDate)) {
+      invalidTasks.push(task); // Add to invalid tasks if the date is missing or invalid
+      return;
     }
-    if (dateStatus === "Past") {
-      return itemDate < currentDate; // Before today
+
+    if (taskDate < currentDate) {
+      pastTasks.push(task);
+    } else if (taskDate === currentDate) {
+      currentTasks.push(task);
+    } else {
+      futureTasks.push(task);
     }
-    if (dateStatus === "Future") {
-      return itemDate > currentDate; // After today
-    }
-    return true; // Default fallback
   });
+
+  return { pastTasks, currentTasks, futureTasks, invalidTasks };
 };
 
-const DateView = ({ data }) => {
-  const [selectedDate, setSelectedDate] = useState(null);
+const DateView = ({ data = [] }) => {
+  // Use memoization to categorize tasks when data changes
+  const { pastTasks = [], currentTasks = [], futureTasks = [], invalidTasks = [] } = useMemo(
+    () => categorizeByDate(data),
+    [data]
+  );
 
-  const toggleDate = (dateStatus) => {
-    setSelectedDate(selectedDate === dateStatus ? null : dateStatus);
+  // Function to render task table
+  const renderTaskTable = (tasks, title) => {
+    if (tasks.length === 0) {
+      return (
+        <Text
+          style={{
+            margin: "16px 0",
+            textAlign: "center",
+            color: "gray",
+          }}
+        >
+          No tasks available in this category.
+        </Text>
+      );
+    }
+
+    return (
+      <Table>
+        <TableHeader>
+          <TableHeaderCell title="Task Name" />
+          <TableHeaderCell title="Board" />
+          <TableHeaderCell title="Person" />
+          <TableHeaderCell title="Date" />
+        </TableHeader>
+        <TableBody>
+          {tasks.map((task) => (
+            <TableRow key={task.id}>
+              <TableCell>{task.name || "N/A"}</TableCell>
+              <TableCell>{task.boardId || "N/A"}</TableCell>
+              <TableCell>{task.enrichedColumns?.person || "Unassigned"}</TableCell>
+              <TableCell>{task.enrichedColumns?.date4 || "No Date"}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
   };
 
   return (
-    <div className="p-6">
-      {companiesData.map((company, index) => (
-        <div key={index} className="pb-4 mb-4">
-          {/* Accordion Header */}
-          <div
-            className="flex items-center justify-between cursor-pointer"
-            onClick={() => toggleDate(company.name)}
-          >
-            <div className="flex items-center gap-2">
-              {/* Arrow Icon */}
-              <span
-                className={`${
-                  selectedDate === company.name ? "rotate-90" : ""
-                } transform text-xl text-gray-700 transition-transform duration-200`}
-              >
-                <MdKeyboardArrowRight />
-              </span>
-              {/* Company Name */}
-              <Text
-                size="lg"
-                className={`${
-                  selectedDate === company.name
-                    ? "font-bold text-blue-600"
-                    : "text-gray-700"
-                }`}
-              >
-                {company.name}
-              </Text>
-              {/* Item Count */}
-              <Text size="sm" className="text-gray-500">
-                {`${
-                  getFilteredData(data, company.name).length
-                } items`}
-              </Text>
-            </div>
-          </div>
+    <div className="date-view">
+      <Accordion>
+        {/* Past Tasks */}
+        <AccordionItem title={`Past Tasks (${pastTasks.length})`} isOpen={true}>
+          {renderTaskTable(pastTasks, "Past Tasks")}
+        </AccordionItem>
 
-          {/* Accordion Content */}
-          {selectedDate === company.name && (
-            <div className="mt-4">
-              <Table
-                data={getFilteredData(data, company.name)}
-              />
-            </div>
-          )}
-        </div>
-      ))}
+        {/* Current Tasks */}
+        <AccordionItem title={`Current Tasks (${currentTasks.length})`}>
+          {renderTaskTable(currentTasks, "Current Tasks")}
+        </AccordionItem>
+
+        {/* Future Tasks */}
+        <AccordionItem title={`Future Tasks (${futureTasks.length})`}>
+          {renderTaskTable(futureTasks, "Future Tasks")}
+        </AccordionItem>
+
+        {/* Invalid Tasks */}
+        {invalidTasks.length > 0 && (
+          <AccordionItem title="Tasks with Invalid Dates" isOpen={true}>
+            <Text
+              style={{
+                margin: "16px 0",
+                textAlign: "center",
+                color: "red",
+              }}
+            >
+              These tasks have invalid or missing dates.
+            </Text>
+            {renderTaskTable(invalidTasks, "Invalid Tasks")}
+          </AccordionItem>
+        )}
+      </Accordion>
     </div>
   );
 };

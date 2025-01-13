@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { FaUsers, FaClock, FaTasks } from 'react-icons/fa'; // Importing icons from react-icons
 import {
   Table as MondayTable,
   TableHeader,
@@ -7,6 +8,7 @@ import {
   TableRow,
   TableCell,
   Label,
+  Text
 } from "monday-ui-react-core";
 import SkeletonLoader from "./SkeletonLoader";
 import "monday-ui-react-core/dist/main.css";
@@ -20,7 +22,7 @@ import {
   getTimeTrackingValues,
 } from "../../MondayAPI/monday2";
 
-const Table = ({ boardIds, selectedPeopleColumns }) => {
+const Table = ({ boardIds, selectedPeopleColumns, enrichedData, setEnrichedData }) => {
   const [data, setData] = useState([]);
   const [personData, setPersonData] = useState({});
   const [loading, setLoading] = useState(false);
@@ -148,25 +150,36 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
               : [];
 
             const mapping = {};
-            const mergeValues = (values, valueKey = "text") => {
+            const mergeValues = (values, valueKey = "text", columnType) => {
               values.forEach((board) => {
                 board.items_page.items.forEach((item) => {
                   const itemId = item.id;
                   if (!mapping[itemId]) mapping[itemId] = {};
                   item.column_values.forEach((col) => {
-                    mapping[itemId][col.id] =
-                      col[valueKey] || col.text || "-";
+                    mapping[itemId][col.id] = {
+                      value: col[valueKey] || col.text || "-",
+                      columnType, // Add column type (person, status, date, time_tracking)
+                    };
                   });
                 });
               });
             };
 
-            mergeValues(personValues);
-            mergeValues(statusValues);
-            mergeValues(dateValues);
-            mergeValues(timeTrackingValues, "duration");
+            mergeValues(personValues, "text", "person");
+            mergeValues(statusValues, "text", "status");
+            mergeValues(dateValues, "text", "date");
+            mergeValues(timeTrackingValues, "duration", "time_tracking");
 
             setPersonData(mapping);
+
+            // Set the enriched data with column type information
+            const enrichedData = mergedData.map((item) => ({
+              ...item,
+              enrichedColumns: mapping[item.id] || {},
+            }));
+
+            setEnrichedData(enrichedData);
+            console.log("Enriched Data:", enrichedData); // Log enriched data
           }
         } catch (error) {
           console.error("Error fetching data:", error);
@@ -192,7 +205,10 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
 
     data.forEach((item) => {
       parsedColumns.forEach(({ columnId, boardId }) => {
-        const value = item.boardId === boardId && personData[item.id] && personData[item.id][columnId];
+        const value =
+          item.boardId === boardId &&
+          personData[item.id] &&
+          personData[item.id][columnId]?.value;
 
         if (columnId.includes("person") && value) {
           totalPeople.add(value);
@@ -261,37 +277,39 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
                   </TableCell>
 
                   {parsedColumns.map(({ columnId, boardId }) => {
-                    const value =
+                    const enrichedValue =
                       item.boardId === boardId &&
                       personData[item.id] &&
                       personData[item.id][columnId];
 
-                    const displayValue = columnId.includes("date")
-                      ? formatDate(value)
-                      : columnId.includes("time_tracking")
-                      ? formatDuration(value)
-                      : value;
+                    const displayValue = enrichedValue
+                      ? columnId.includes("date")
+                        ? formatDate(enrichedValue.value)
+                        : columnId.includes("time_tracking")
+                        ? formatDuration(enrichedValue.value)
+                        : enrichedValue.value
+                      : "-";
 
                     const bgColor =
-                      columnId.includes("status") && statusColors[value]
-                        ? statusColors[value]
+                      columnId.includes("status") && statusColors[displayValue]
+                        ? statusColors[displayValue]
                         : columnId.includes("priority") &&
-                          priorityColors[value]
-                        ? priorityColors[value]
+                          priorityColors[displayValue]
+                        ? priorityColors[displayValue]
                         : "";
 
                     return (
                       <TableCell
                         key={`${item.id}-${columnId}`}
-                        className={`px-4 py-2 border-r text-center`}
+                        className="px-4 py-2 border-r text-center"
                         style={{ backgroundColor: bgColor }}
                       >
                         {loading ? (
                           <SkeletonLoader />
-                        ) : columnId.includes("date") ? (
-                          <Label text={displayValue || "-"} color="primary" />
+                        ) : columnId.includes("date") || columnId === "group" ? (
+                          <Label text={displayValue} color="primary" />
                         ) : (
-                          displayValue || "-"
+                          <Text>{displayValue}</Text>
                         )}
                       </TableCell>
                     );
@@ -304,30 +322,27 @@ const Table = ({ boardIds, selectedPeopleColumns }) => {
       {/* Summary Toggle Button */}
       <button
         onClick={toggleSummary}
-        className="mt-4 bg-blue-500 text-white px-4 py-2 rounded"
+        className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-lg"
       >
         {showSummary ? "Hide Summary" : "Show Summary"}
       </button>
 
-      {/* Summary Display */}
+      {/* Show summary if visible */}
       {showSummary && (
-        <div className="mt-4 p-4 border border-gray-300 rounded-lg w-full text-center">
+        <div className="mt-4 p-4 border rounded-lg bg-gray-50">
+          <h4 className="font-semibold">Summary</h4>
+          <p><strong>Total People Involved:</strong> {summary.totalPeople}</p>
           <p>
-            <strong>Total People Working on Tasks:</strong> {summary.totalPeople}
-          </p>
-          <p>
-            <strong>Status Breakdown:</strong>
+            <strong>Status Summary:</strong>
             <ul>
               {Object.entries(summary.taskStatus).map(([status, count]) => (
                 <li key={status}>
-                  <strong>{status}</strong>: {count}
+                  {status}: {count} tasks
                 </li>
               ))}
             </ul>
           </p>
-          <p>
-            <strong>Total Time Tracked:</strong> {summary.totalTime}
-          </p>
+          <p><strong>Total Time Tracked:</strong> {summary.totalTime}</p>
         </div>
       )}
     </div>

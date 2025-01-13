@@ -1,10 +1,13 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Search } from "monday-ui-react-core/next";
-import { Dropdown, Text, Button, Heading } from "monday-ui-react-core";
+import { Dropdown, Text, Button } from "monday-ui-react-core";
 import { FaCog } from "react-icons/fa"; // Importing React Icon (settings)
 import "monday-ui-react-core/dist/main.css";
 import Table from "./components/Table/Table";
 import CustomizationSidebar from "./components/CustomizationSidebar/CustomizationSidebar";
+import BoardView from "./components/ViewOptions/BoardView";
+import PersonView from "./components/ViewOptions/PersonView";
+import DateView from "./components/ViewOptions/DateView";
 
 const App = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -12,10 +15,15 @@ const App = () => {
   const [selectedColumns, setSelectedColumns] = useState([]);
   const [selectedView, setSelectedView] = useState("table"); // "table" or "calendar"
   const [searchQuery, setSearchQuery] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false); // Modal state for centered button
+  const [enrichedData, setEnrichedData] = useState([]); // State for enriched data
+
+  useEffect(() => {
+    console.log(enrichedData, "from app");
+    console.log(selectedView, "from app");
+  }, [selectedView]); // Add selectedView to the dependency array
 
   const viewOptions = [
-    { value: "all", label: "View all" },
+    { value: "table", label: "View all" },
     { value: "board", label: "Board View" },
     { value: "person", label: "Person View" },
     { value: "date", label: "Date View" },
@@ -26,7 +34,7 @@ const App = () => {
       {/* Header Section */}
       <div className="header">
         <div>
-          <h1 className="text-3xl font-bold">Tasks</h1>
+          <Text className="text-4xl font-bold">Tasks</Text>
         </div>
       </div>
 
@@ -44,16 +52,16 @@ const App = () => {
           className="left-group"
           style={{ display: "flex", alignItems: "center" }}
         >
-          <Search
+          {/* <Search
             placeholder="Search"
             onChange={(event) => setSearchQuery(event.target.value)}
-          />
+          /> */}
           <Dropdown
             options={viewOptions}
             searchable={false}
             clearable={false}
             defaultValue={[viewOptions[0]]}
-            onChange={(selected) => console.log(selected.value)}
+            onChange={(selected) => setSelectedView(selected.value)} // Update state
             className="dropdown"
             style={{ marginLeft: "12px" }}
           />
@@ -121,14 +129,21 @@ const App = () => {
               </Button>
             </div>
           </div>
-        ) : selectedView === "table" ? (
+        ) : // Conditional rendering based on selectedView
+        selectedView === "board" ? (
+          <BoardView data={enrichedData} />
+        ) : selectedView === "person" ? (
+          <PersonView data={enrichedData} />
+        ) : selectedView === "date" ? (
+          <DateView data={enrichedData} />
+        ) : (
           <Table
             boardIds={selectedBoardIds}
             selectedPeopleColumns={selectedColumns || []}
             searchQuery={searchQuery}
+            enrichedData={enrichedData}
+            setEnrichedData={setEnrichedData}
           />
-        ) : (
-          <p style={{ textAlign: "center" }}>Calendar View (Coming Soon)</p>
         )}
       </div>
     </div>

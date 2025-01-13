@@ -1,65 +1,108 @@
-import React, { useState } from "react";
-import "monday-ui-react-core/dist/main.css";
-import { MdKeyboardArrowRight } from "react-icons/md";
-import Text from "monday-ui-react-core/dist/Text";
-import Table from "../Table/Table";
+import React, { useState, useEffect } from "react";
+import {
+  Accordion,
+  AccordionItem,
+  Table,
+  TableHeader,
+  TableHeaderCell,
+  TableBody,
+  TableRow,
+  TableCell,
+  Label,
+} from "monday-ui-react-core";
 
 const BoardView = ({ data }) => {
-  const [expandedBoard, setExpandedBoard] = useState(null);
+  const [groupedByBoard, setGroupedByBoard] = useState({});
+  const [expandedBoards, setExpandedBoards] = useState([]);
 
-  const toggleBoard = (boardName) => {
-    setExpandedBoard(expandedBoard === boardName ? null : boardName);
+  // Group tasks by boardId whenever `data` changes
+  useEffect(() => {
+    const grouped = data.reduce((acc, task) => {
+      if (!acc[task.boardId]) {
+        acc[task.boardId] = [];
+      }
+      acc[task.boardId].push(task);
+      return acc;
+    }, {});
+    setGroupedByBoard(grouped);
+  }, [data]);
+
+  const toggleBoard = (boardId) => {
+    setExpandedBoards((prev) =>
+      prev.includes(boardId)
+        ? prev.filter((board) => board !== boardId)
+        : [...prev, boardId]
+    );
   };
 
-  // Get unique boards from the data
-  const uniqueBoards = [...new Set(data.map((item) => item.board.name))];
+  // Helper function to create columns based on enriched data
+  const generateColumns = (boardData) => {
+    const columnTypes = {};
+
+    // Gather unique column types
+    boardData.forEach((task) => {
+      Object.values(task.enrichedColumns).forEach((col) => {
+        columnTypes[col.columnType] = col.columnType;
+      });
+    });
+
+    const columns = [
+      { id: "taskName", title: "Task Name" },
+      { id: "group", title: "Group" },
+      ...Object.keys(columnTypes).map((type) => ({
+        id: type,
+        title: type.charAt(0).toUpperCase() + type.slice(1),
+      })),
+    ];
+
+    return columns;
+  };
 
   return (
-    <div className="p-6">
-      {uniqueBoards.map((boardName, index) => {
-        // Filter items for the current board
-        const boardData = data.filter((item) => item.board.name === boardName);
+    <div className="board-view">
+      <Accordion>
+        {Object.keys(groupedByBoard).map((boardId) => {
+          const boardData = groupedByBoard[boardId];
+          const columns = generateColumns(boardData);
+          const recordCount = boardData.length;
 
-        return (
-          <div key={index} className="pb-4 mb-4">
-            {/* Board Header */}
-            <div
-              className="flex items-center justify-between cursor-pointer"
-              onClick={() => toggleBoard(boardName)}
+          return (
+            <AccordionItem
+              key={boardId}
+              title={`Board ID: ${boardId} (${recordCount} records)`}
+              isOpen={expandedBoards.includes(boardId)}
+              onClick={() => toggleBoard(boardId)}
             >
-              <div className="flex items-center gap-2">
-                <span
-                  className={`${
-                    expandedBoard === boardName ? "rotate-90" : ""
-                  } transform text-xl text-gray-700`}
-                >
-                  <MdKeyboardArrowRight />
-                </span>
-                <Text
-                  size="lg"
-                  className={`${
-                    expandedBoard === boardName
-                      ? "font-bold text-blue-600"
-                      : "text-gray-700"
-                  }`}
-                >
-                  {boardName}
-                </Text>
-                <Text size="sm" className="text-gray-500">
-                  {`${boardData.length} items`}
-                </Text>
-              </div>
-            </div>
+              <Table columns={columns}>
+                <TableHeader>
+                  {columns.map((col) => (
+                    <TableHeaderCell key={col.id} title={col.title} />
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {boardData.map((task) => (
+                    <TableRow key={task.id}>
+                      <TableCell>{task.name}</TableCell>
+                      <TableCell>{task.group?.title || "-"}</TableCell>
 
-            {/* Expanded Board Details */}
-            {expandedBoard === boardName && (
-              <div className="mt-4">
-                <Table data={boardData} />
-              </div>
-            )}
-          </div>
-        );
-      })}
+                      {columns.slice(2).map((col) => {
+                        const enrichedValue = task.enrichedColumns[col.id];
+                        const displayValue = enrichedValue
+                          ? enrichedValue.value
+                          : "-";
+
+                        return (
+                          <TableCell key={col.id}>{displayValue}</TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
     </div>
   );
 };
