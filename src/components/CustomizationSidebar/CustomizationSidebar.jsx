@@ -3,7 +3,7 @@ import { ExpandCollapse, Checkbox, Button, Dropdown, Text } from "monday-ui-reac
 import "monday-ui-react-core/dist/main.css";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
-import { IoClose } from "react-icons/io5"; // Importing the close icon
+import { IoClose } from "react-icons/io5";
 
 import {
   getBoards,
@@ -28,7 +28,7 @@ const CustomizationSidebar = ({
   const [timeTrackingColumns, setTimeTrackingColumns] = useState([]);
   const [loadingBoards, setLoadingBoards] = useState(false);
   const [loadingColumns, setLoadingColumns] = useState(false);
-  const [columnsCache, setColumnsCache] = useState({}); // Cache for fetched columns
+  const [columnsCache, setColumnsCache] = useState({});
 
   useEffect(() => {
     const fetchBoards = async () => {
@@ -107,12 +107,13 @@ const CustomizationSidebar = ({
 
   const handleColumnSelection = (columnId, boardId, type) => {
     const columnKey = `${columnId}@${boardId}`;
-
     const updatedSelectedColumns = selectedColumns.filter(
       (key) => !key.startsWith(`${type}@${boardId}`)
     );
 
-    updatedSelectedColumns.push(columnKey);
+    if (columnId) {
+      updatedSelectedColumns.push(columnKey);
+    }
 
     setSelectedColumns(updatedSelectedColumns);
   };
@@ -164,20 +165,28 @@ const CustomizationSidebar = ({
       >
         {Object.entries(columnsByBoard).map(([boardId, boardColumns]) => {
           const boardName = boards.find((b) => b.id === boardId)?.name || boardId;
+          const selectedValue = selectedColumns.find((key) =>
+            key.startsWith(`${type}@${boardId}`)
+          );
+
           return (
             <div key={boardId} className="mb-4">
               <Text className="text-sm font-semibold text-gray-700 mb-2">{boardName}</Text>
               <Dropdown
-                options={boardColumns.map((col) => ({
-                  value: `${col.id}@${col.boardId}`,
-                  label: col.title,
-                }))}
-                value={selectedColumns.find((key) => key.startsWith(`${type}@${boardId}`)) || ''}
-                onChange={(e) =>
-                  handleColumnSelection(e.value.split('@')[0], e.value.split('@')[1], type)
-                }
+                options={[
+                  { value: "", label: `Clear ${title}` },
+                  ...boardColumns.map((col) => ({
+                    value: `${col.id}@${col.boardId}`,
+                    label: col.title,
+                  })),
+                ]}
+                value={selectedValue || ""}
+                onChange={(e) => {
+                  const [colId, bId] = e.value.split("@");
+                  handleColumnSelection(colId, bId, type);
+                }}
                 placeholder={`Select ${title}`}
-                style={{ width: '100%', zIndex: 1000 }}
+                style={{ width: "100%", zIndex: 1000 }}
               />
             </div>
           );
