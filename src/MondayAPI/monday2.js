@@ -1,10 +1,10 @@
 const mondaySdk = require("monday-sdk-js");
 const monday = mondaySdk();
- 
+
 monday.setToken(
   "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjM3NjE1OTI3NywiYWFpIjoxMSwidWlkIjo2MTAxNzc2OCwiaWFkIjoiMjAyNC0wNi0yNFQxOTowNzozOS4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6ODUyNzQ5NSwicmduIjoidXNlMSJ9.ZSI1v2UukqqA0DckP8jc6Xp2rNqvboN-X46VilNRL6E"
 );
- 
+
 const getBoards = async () => {
   let query2 = `query {
     boards(limit: 500, workspace_ids: 8359320) {
@@ -13,7 +13,7 @@ const getBoards = async () => {
     }
   }`;
   let response = await monday.api(query2);
- 
+
   let boards = response.data.boards;
   const filteredBoards = boards.filter(
     (board, index, self) =>
@@ -22,7 +22,7 @@ const getBoards = async () => {
   );
   return filteredBoards;
 };
- 
+
 const getBoardsData = async (boardIds) => {
   let query = `{
     boards(limit: 500, ids: ${JSON.stringify(boardIds)}) {
@@ -42,7 +42,7 @@ const getBoardsData = async (boardIds) => {
   let response = await monday.api(query);
   return response.data.boards;
 };
- 
+
 const getPeopleColumns = async (boardIds) => {
   let query = `query {
     boards(ids: ${JSON.stringify(boardIds)}) {
@@ -56,7 +56,7 @@ const getPeopleColumns = async (boardIds) => {
   let response = await monday.api(query);
   return response.data.boards;
 };
- 
+
 const getDateColumns = async (boardIds) => {
   let query = `query {
     boards(ids: ${JSON.stringify(boardIds)}) {
@@ -70,7 +70,7 @@ const getDateColumns = async (boardIds) => {
   let response = await monday.api(query);
   return response.data.boards;
 };
- 
+
 const getStatusColumns = async (boardIds) => {
   let query = `query {
     boards(ids: ${JSON.stringify(boardIds)}) {
@@ -84,7 +84,7 @@ const getStatusColumns = async (boardIds) => {
   let response = await monday.api(query);
   return response.data.boards;
 };
- 
+
 const getTimeTrackingColumns = async (boardIds) => {
   let query = `query {
     boards(ids: ${JSON.stringify(boardIds)}) {
@@ -98,7 +98,7 @@ const getTimeTrackingColumns = async (boardIds) => {
   let response = await monday.api(query);
   return response.data.boards;
 };
- 
+
 const getPersonValues = async (PeopleIds, boardIds) => {
   let query = `query {
     boards(ids: ${JSON.stringify(boardIds)}) {
@@ -123,7 +123,7 @@ const getPersonValues = async (PeopleIds, boardIds) => {
   let response = await monday.api(query);
   return response.data.boards;
 };
- 
+
 const getStatusValues = async (StatusIds, boardIds) => {
   let query = `query {
     boards(ids: ${JSON.stringify(boardIds)}) {
@@ -147,7 +147,7 @@ const getStatusValues = async (StatusIds, boardIds) => {
   let response = await monday.api(query);
   return response.data.boards;
 };
- 
+
 const getDateValues = async (DateIds, boardIds) => {
   let query = `query {
     boards(ids: ${JSON.stringify(boardIds)}) {
@@ -166,7 +166,7 @@ const getDateValues = async (DateIds, boardIds) => {
   let response = await monday.api(query);
   return response.data.boards;
 };
- 
+
 const getTimeTrackingValues = async (TimeTrackingIds, boardIds) => {
   let query = `query {
     boards(ids: ${JSON.stringify(boardIds)}){
@@ -188,17 +188,20 @@ const getTimeTrackingValues = async (TimeTrackingIds, boardIds) => {
   let response = await monday.api(query);
   return response.data.boards;
 };
- 
+
 const main = async () => {
-  let data = await getStatusValues(
-    ["status"],
-    [7574082160]
-  );
+  let query = `mutation { create_subitem (parent_item_id: "7574082167" item_name: "Subitem1" column_values: "{\"status_1__1\": \"0\"}") {id} }`;
+
+  console.log(JSON.stringify(query));
+
+  let data4 = await monday.api(JSON.stringify(query));
+  return data4;
+  let data = await getStatusValues(["status"], [7574082160]);
   let data2 = await getStatusColumns([7574082160, 8144313397]);
   let data3 = await getBoardsData([7574082160, 8144313397]);
   return data;
 };
- 
+
 (async () => {
   let a = await main();
   console.dir(a, { depth: null });
@@ -221,7 +224,7 @@ const getProfilePicturesOfUsers = async (userIds) => {
     return [];
   }
 };
- 
+
 // Export functions
 module.exports = {
   getBoards,
@@ -234,5 +237,5 @@ module.exports = {
   getPersonValues,
   getStatusValues,
   getTimeTrackingValues,
-  getDateValues
+  getDateValues,
 };

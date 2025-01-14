@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FaUsers, FaClock, FaTasks } from 'react-icons/fa'; // Importing icons from react-icons
+import { FaUsers, FaClock, FaTasks } from "react-icons/fa"; // Importing icons from react-icons
 import {
   Table as MondayTable,
   TableHeader,
@@ -8,7 +8,7 @@ import {
   TableRow,
   TableCell,
   Label,
-  Text
+  Text,
 } from "monday-ui-react-core";
 import SkeletonLoader from "./SkeletonLoader";
 import "monday-ui-react-core/dist/main.css";
@@ -22,7 +22,12 @@ import {
   getTimeTrackingValues,
 } from "../../MondayAPI/monday2";
 
-const Table = ({ boardIds, selectedPeopleColumns, enrichedData, setEnrichedData }) => {
+const Table = ({
+  boardIds,
+  selectedPeopleColumns,
+  enrichedData,
+  setEnrichedData,
+}) => {
   const [data, setData] = useState([]);
   const [personData, setPersonData] = useState({});
   const [loading, setLoading] = useState(false);
@@ -69,8 +74,8 @@ const Table = ({ boardIds, selectedPeopleColumns, enrichedData, setEnrichedData 
   };
 
   const parsedColumns = selectedPeopleColumns.map((col) => {
-    const [columnId, boardId] = col.split("@");
-    return { columnId, boardId, title: columnId };
+    const [type, boardId, columnId] = col.split("@");
+    return { type, boardId, columnId, title: columnId };
   });
 
   const columns = [
@@ -103,10 +108,13 @@ const Table = ({ boardIds, selectedPeopleColumns, enrichedData, setEnrichedData 
           setData(mergedData);
 
           if (selectedPeopleColumns.length > 0) {
-            const columnBoardMapping = parsedColumns.map(({ columnId, boardId }) => ({
-              columnId,
-              boardId,
-            }));
+            const columnBoardMapping = parsedColumns.map(
+              ({ type, boardId, columnId }) => ({
+                type,
+                boardId,
+                columnId,
+              })
+            );
 
             const personColumns = columnBoardMapping.filter(({ columnId }) =>
               columnId.includes("person")
@@ -117,8 +125,8 @@ const Table = ({ boardIds, selectedPeopleColumns, enrichedData, setEnrichedData 
             const dateColumns = columnBoardMapping.filter(({ columnId }) =>
               columnId.includes("date")
             );
-            const timeTrackingColumns = columnBoardMapping.filter(({ columnId }) =>
-              columnId.includes("time_tracking")
+            const timeTrackingColumns = columnBoardMapping.filter(
+              ({ columnId }) => columnId.includes("time_tracking")
             );
 
             const personValues = personColumns.length
@@ -306,7 +314,8 @@ const Table = ({ boardIds, selectedPeopleColumns, enrichedData, setEnrichedData 
                       >
                         {loading ? (
                           <SkeletonLoader />
-                        ) : columnId.includes("date") || columnId === "group" ? (
+                        ) : columnId.includes("date") ||
+                          columnId === "group" ? (
                           <Label text={displayValue} color="primary" />
                         ) : (
                           <Text>{displayValue}</Text>
@@ -331,7 +340,9 @@ const Table = ({ boardIds, selectedPeopleColumns, enrichedData, setEnrichedData 
       {showSummary && (
         <div className="mt-4 p-4 border rounded-lg bg-gray-50">
           <h4 className="font-semibold">Summary</h4>
-          <p><strong>Total People Involved:</strong> {summary.totalPeople}</p>
+          <p>
+            <strong>Total People Involved:</strong> {summary.totalPeople}
+          </p>
           <p>
             <strong>Status Summary:</strong>
             <ul>
@@ -342,7 +353,9 @@ const Table = ({ boardIds, selectedPeopleColumns, enrichedData, setEnrichedData 
               ))}
             </ul>
           </p>
-          <p><strong>Total Time Tracked:</strong> {summary.totalTime}</p>
+          <p>
+            <strong>Total Time Tracked:</strong> {summary.totalTime}
+          </p>
         </div>
       )}
     </div>

@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { ExpandCollapse, Checkbox, Button, Dropdown, Text } from "monday-ui-react-core";
+import {
+  ExpandCollapse,
+  Checkbox,
+  Button,
+  Dropdown,
+  Text,
+} from "monday-ui-react-core";
 import "monday-ui-react-core/dist/main.css";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
@@ -58,14 +64,19 @@ const CustomizationSidebar = ({
         setPeopleColumns((prev) => [...prev, ...cachedColumns.people]);
         setDateColumns((prev) => [...prev, ...cachedColumns.date]);
         setStatusColumns((prev) => [...prev, ...cachedColumns.status]);
-        setTimeTrackingColumns((prev) => [...prev, ...cachedColumns.timeTracking]);
+        setTimeTrackingColumns((prev) => [
+          ...prev,
+          ...cachedColumns.timeTracking,
+        ]);
       } else {
         setLoadingColumns(true);
         try {
           const fetchedPeopleColumns = await getPeopleColumns([boardId]);
           const fetchedDateColumns = await getDateColumns([boardId]);
           const fetchedStatusColumns = await getStatusColumns([boardId]);
-          const fetchedTimeTrackingColumns = await getTimeTrackingColumns([boardId]);
+          const fetchedTimeTrackingColumns = await getTimeTrackingColumns([
+            boardId,
+          ]);
 
           const newColumns = {
             people: fetchedPeopleColumns.flatMap((board) =>
@@ -85,7 +96,10 @@ const CustomizationSidebar = ({
           setPeopleColumns((prev) => [...prev, ...newColumns.people]);
           setDateColumns((prev) => [...prev, ...newColumns.date]);
           setStatusColumns((prev) => [...prev, ...newColumns.status]);
-          setTimeTrackingColumns((prev) => [...prev, ...newColumns.timeTracking]);
+          setTimeTrackingColumns((prev) => [
+            ...prev,
+            ...newColumns.timeTracking,
+          ]);
           setColumnsCache((prev) => ({ ...prev, [boardId]: newColumns }));
         } catch (error) {
           console.error("Error fetching columns:", error);
@@ -97,25 +111,26 @@ const CustomizationSidebar = ({
       setPeopleColumns((prev) => prev.filter((col) => col.boardId !== boardId));
       setDateColumns((prev) => prev.filter((col) => col.boardId !== boardId));
       setStatusColumns((prev) => prev.filter((col) => col.boardId !== boardId));
-      setTimeTrackingColumns((prev) => prev.filter((col) => col.boardId !== boardId));
+      setTimeTrackingColumns((prev) =>
+        prev.filter((col) => col.boardId !== boardId)
+      );
 
       setSelectedColumns((prevSelectedColumns) =>
-        prevSelectedColumns.filter((key) => !key.endsWith(`@${boardId}`))
+        prevSelectedColumns.filter((key) => !key.includes(`@${boardId}@`))
       );
     }
   };
 
   const handleColumnSelection = (columnId, boardId, type) => {
-    const columnKey = `${columnId}@${boardId}`;
+    const columnKey = `${type}@${boardId}@${columnId}`;
+
     const updatedSelectedColumns = selectedColumns.filter(
-      (key) => !key.startsWith(`${type}@${boardId}`)
+      (key) => !key.startsWith(`${type}`)
     );
 
-    if (columnId) {
-      updatedSelectedColumns.push(columnKey);
-    }
-
+    updatedSelectedColumns.push(columnKey);
     setSelectedColumns(updatedSelectedColumns);
+    console.log("selectedcol", selectedColumns);
   };
 
   const renderSkeleton = (count) => (
@@ -164,27 +179,29 @@ const CustomizationSidebar = ({
         className="my-4"
       >
         {Object.entries(columnsByBoard).map(([boardId, boardColumns]) => {
-          const boardName = boards.find((b) => b.id === boardId)?.name || boardId;
-          const selectedValue = selectedColumns.find((key) =>
-            key.startsWith(`${type}@${boardId}`)
+          const boardName =
+            boards.find((b) => b.id === boardId)?.name || boardId;
+
+          const selectedColumnKey = selectedColumns.find((key) =>
+            key.startsWith(`${type}@${boardId}@`)
           );
+
+          const selectedColumnId = selectedColumnKey
+            ? selectedColumnKey.split("@")[2]
+            : null;
 
           return (
             <div key={boardId} className="mb-4">
-              <Text className="text-sm font-semibold text-gray-700 mb-2">{boardName}</Text>
+              <Text className="text-sm font-semibold text-gray-700 mb-2">
+                {boardName}
+              </Text>
               <Dropdown
-                options={[
-                  { value: "", label: `Clear ${title}` },
-                  ...boardColumns.map((col) => ({
-                    value: `${col.id}@${col.boardId}`,
-                    label: col.title,
-                  })),
-                ]}
-                value={selectedValue || ""}
-                onChange={(e) => {
-                  const [colId, bId] = e.value.split("@");
-                  handleColumnSelection(colId, bId, type);
-                }}
+                options={boardColumns.map((col) => ({
+                  value: col.id,
+                  label: col.title,
+                }))}
+                value={selectedColumnId || ""}
+                onChange={(e) => handleColumnSelection(e.value, boardId, type)}
                 placeholder={`Select ${title}`}
                 style={{ width: "100%", zIndex: 1000 }}
               />
@@ -219,19 +236,19 @@ const CustomizationSidebar = ({
       </div>
       <hr />
       <ExpandCollapse title="Boards" className="my-4" isExpanded>
-        {loadingBoards ? (
-          renderSkeleton(5)
-        ) : (
-          boards.map((board) => (
-            <Checkbox
-              key={board.id}
-              label={board.name}
-              checked={selectedBoardIds.includes(board.id)}
-              onChange={(e) => handleBoardSelection(board.id, e.target.checked)}
-              className="my-2"
-            />
-          ))
-        )}
+        {loadingBoards
+          ? renderSkeleton(5)
+          : boards.map((board) => (
+              <Checkbox
+                key={board.id}
+                label={board.name}
+                checked={selectedBoardIds.includes(board.id)}
+                onChange={(e) =>
+                  handleBoardSelection(board.id, e.target.checked)
+                }
+                className="my-2"
+              />
+            ))}
       </ExpandCollapse>
 
       {selectedBoardIds.length > 0 && (
@@ -239,7 +256,11 @@ const CustomizationSidebar = ({
           {renderColumnsSection("People Columns", peopleColumns, "people")}
           {renderColumnsSection("Status Columns", statusColumns, "status")}
           {renderColumnsSection("Date Columns", dateColumns, "date")}
-          {renderColumnsSection("Time Tracking Columns", timeTrackingColumns, "timeTracking")}
+          {renderColumnsSection(
+            "Time Tracking Columns",
+            timeTrackingColumns,
+            "timeTracking"
+          )}
         </>
       )}
 
