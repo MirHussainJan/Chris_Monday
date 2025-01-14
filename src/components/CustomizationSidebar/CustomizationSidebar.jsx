@@ -109,7 +109,7 @@ const CustomizationSidebar = ({
     const columnKey = `${columnId}@${boardId}`;
 
     const updatedSelectedColumns = selectedColumns.filter(
-      (key) => !key.startsWith(`${type}@`)
+      (key) => !key.startsWith(`${type}@${boardId}`)
     );
 
     updatedSelectedColumns.push(columnKey);
@@ -124,6 +124,7 @@ const CustomizationSidebar = ({
       ))}
     </div>
   );
+
   const renderColSkeleton = (count) => (
     <div className="mb-3">
       {Array.from({ length: count }).map((_, idx) => (
@@ -135,6 +136,12 @@ const CustomizationSidebar = ({
   const renderColumnsSection = (title, columns, type) => {
     if (loadingColumns) return renderColSkeleton(1);
     if (columns.length === 0) return null;
+
+    const columnsByBoard = columns.reduce((acc, col) => {
+      if (!acc[col.boardId]) acc[col.boardId] = [];
+      acc[col.boardId].push(col);
+      return acc;
+    }, {});
 
     return (
       <ExpandCollapse
@@ -155,16 +162,26 @@ const CustomizationSidebar = ({
         isExpanded
         className="my-4"
       >
-        <Dropdown
-          options={columns.map((col) => ({
-            value: `${col.id}@${col.boardId}`,
-            label: `${col.title} (${boards.find((b) => b.id === col.boardId)?.name || col.boardId})`,
-          }))}
-          value={selectedColumns.find((key) => key.startsWith(`${type}@`)) || ''}
-          onChange={(e) => handleColumnSelection(e.value.split('@')[0], e.value.split('@')[1], type)}
-          placeholder={`Select ${title}`}
-          style={{ width: '100%', zIndex: 1000 }}
-        />
+        {Object.entries(columnsByBoard).map(([boardId, boardColumns]) => {
+          const boardName = boards.find((b) => b.id === boardId)?.name || boardId;
+          return (
+            <div key={boardId} className="mb-4">
+              <Text className="text-sm font-semibold text-gray-700 mb-2">{boardName}</Text>
+              <Dropdown
+                options={boardColumns.map((col) => ({
+                  value: `${col.id}@${col.boardId}`,
+                  label: col.title,
+                }))}
+                value={selectedColumns.find((key) => key.startsWith(`${type}@${boardId}`)) || ''}
+                onChange={(e) =>
+                  handleColumnSelection(e.value.split('@')[0], e.value.split('@')[1], type)
+                }
+                placeholder={`Select ${title}`}
+                style={{ width: '100%', zIndex: 1000 }}
+              />
+            </div>
+          );
+        })}
       </ExpandCollapse>
     );
   };
