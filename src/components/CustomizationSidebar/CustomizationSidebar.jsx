@@ -10,6 +10,7 @@ import "monday-ui-react-core/dist/main.css";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { IoClose } from "react-icons/io5";
+import { MdCheckBox, MdCalendarToday, MdPeople, MdTimer, MdDashboard } from "react-icons/md";
 
 import {
   getBoards,
@@ -37,6 +38,7 @@ const CustomizationSidebar = ({
   const [columnsCache, setColumnsCache] = useState({});
 
   useEffect(() => {
+    console.log(selectedColumns)
     const fetchBoards = async () => {
       setLoadingBoards(true);
       try {
@@ -49,7 +51,7 @@ const CustomizationSidebar = ({
       }
     };
     fetchBoards();
-  }, []);
+  }, [selectedColumns]);
 
   const handleBoardSelection = async (boardId, isChecked) => {
     const updatedBoardIds = isChecked
@@ -74,9 +76,7 @@ const CustomizationSidebar = ({
           const fetchedPeopleColumns = await getPeopleColumns([boardId]);
           const fetchedDateColumns = await getDateColumns([boardId]);
           const fetchedStatusColumns = await getStatusColumns([boardId]);
-          const fetchedTimeTrackingColumns = await getTimeTrackingColumns([
-            boardId,
-          ]);
+          const fetchedTimeTrackingColumns = await getTimeTrackingColumns([boardId]);
 
           const newColumns = {
             people: fetchedPeopleColumns.flatMap((board) =>
@@ -124,13 +124,13 @@ const CustomizationSidebar = ({
   const handleColumnSelection = (columnId, boardId, type) => {
     const columnKey = `${type}@${boardId}@${columnId}`;
 
+    // Remove any previously selected column of the same type for this board
     const updatedSelectedColumns = selectedColumns.filter(
-      (key) => !key.startsWith(`${type}`)
+      (key) => !key.startsWith(`${type}@${boardId}@`)
     );
 
-    updatedSelectedColumns.push(columnKey);
+    updatedSelectedColumns.push(columnKey); // Add the newly selected column
     setSelectedColumns(updatedSelectedColumns);
-    console.log("selectedcol", selectedColumns);
   };
 
   const renderSkeleton = (count) => (
@@ -149,7 +149,7 @@ const CustomizationSidebar = ({
     </div>
   );
 
-  const renderColumnsSection = (title, columns, type) => {
+  const renderColumnsSection = (title, columns, type, icon, dropdownColor) => {
     if (loadingColumns) return renderColSkeleton(1);
     if (columns.length === 0) return null;
 
@@ -162,16 +162,10 @@ const CustomizationSidebar = ({
     return (
       <ExpandCollapse
         title={
-          <span
-            className="truncate-text"
-            title={title}
-            style={{
-              maxWidth: "200px",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
+          <span style={{ display: "flex", alignItems: "center" }}>
+            <span style={{ marginRight: "8px", color: dropdownColor }}>
+              {icon}
+            </span>
             {title}
           </span>
         }
@@ -188,7 +182,7 @@ const CustomizationSidebar = ({
 
           const selectedColumnId = selectedColumnKey
             ? selectedColumnKey.split("@")[2]
-            : null;
+            : "";
 
           return (
             <div key={boardId} className="mb-4">
@@ -198,12 +192,30 @@ const CustomizationSidebar = ({
               <Dropdown
                 options={boardColumns.map((col) => ({
                   value: col.id,
-                  label: col.title,
+                  label: (
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      <span
+                        style={{
+                          marginRight: "8px",
+                          color: dropdownColor,
+                        }}
+                      >
+                        {icon}
+                      </span>
+                      {col.title}
+                    </div>
+                  ),
                 }))}
-                value={selectedColumnId || ""}
+                value={selectedColumnId}
                 onChange={(e) => handleColumnSelection(e.value, boardId, type)}
                 placeholder={`Select ${title}`}
-                style={{ width: "100%", zIndex: 1000 }}
+                size={Dropdown.sizes.SMALL}
+                style={{
+                  width: "100%",
+                  borderRadius: "6px",
+                  backgroundColor: "#f9f9f9",
+                  zIndex: 1000,
+                }}
               />
             </div>
           );
@@ -214,7 +226,7 @@ const CustomizationSidebar = ({
 
   return (
     <div
-      className={`sidebar p-6 bg-white border border-gray-300 rounded-lg shadow-lg fixed top-0 right-0 h-full transition-all duration-300 ${
+      className={`sidebar p-6 bg-white border border-gray-200 rounded-md shadow-lg fixed top-0 right-0 h-full transition-all duration-300 ${
         isOpen ? "transform translate-x-0" : "transform translate-x-full"
       }`}
       style={{
@@ -235,7 +247,17 @@ const CustomizationSidebar = ({
         />
       </div>
       <hr />
-      <ExpandCollapse title="Boards" className="my-4" isExpanded>
+      <ExpandCollapse
+        title={
+          <span style={{ display: "flex", alignItems: "center" }}>
+            <MdDashboard style={{ marginRight: "8px", color: "#666" }} />
+            Boards
+          </span>
+        }
+        className="my-4"
+        isExpanded
+        size="small"
+      >
         {loadingBoards
           ? renderSkeleton(5)
           : boards.map((board) => (
@@ -253,13 +275,33 @@ const CustomizationSidebar = ({
 
       {selectedBoardIds.length > 0 && (
         <>
-          {renderColumnsSection("People Columns", peopleColumns, "people")}
-          {renderColumnsSection("Status Columns", statusColumns, "status")}
-          {renderColumnsSection("Date Columns", dateColumns, "date")}
+          {renderColumnsSection(
+            "People Columns",
+            peopleColumns,
+            "people",
+            <MdPeople />,
+            "#4caf50"
+          )}
+          {renderColumnsSection(
+            "Status Columns",
+            statusColumns,
+            "status",
+            <MdCheckBox />,
+            "#2196f3"
+          )}
+          {renderColumnsSection(
+            "Date Columns",
+            dateColumns,
+            "date",
+            <MdCalendarToday />,
+            "#ff9800"
+          )}
           {renderColumnsSection(
             "Time Tracking Columns",
             timeTrackingColumns,
-            "timeTracking"
+            "timeTracking",
+            <MdTimer />,
+            "#9c27b0"
           )}
         </>
       )}
