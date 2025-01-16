@@ -9,8 +9,7 @@ import {
 import "monday-ui-react-core/dist/main.css";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
-import { IoClose } from "react-icons/io5";
-import { MdCheckBox, MdCalendarToday, MdPeople, MdTimer, MdDashboard } from "react-icons/md";
+import { IoClose } from "react-icons/io5"; // Importing the close icon
 
 import {
   getBoards,
@@ -36,9 +35,9 @@ const CustomizationSidebar = ({
   const [loadingBoards, setLoadingBoards] = useState(false);
   const [loadingColumns, setLoadingColumns] = useState(false);
   const [columnsCache, setColumnsCache] = useState({});
+  const [lastselectedcol, setlastselectcol] = useState(""); // Cache for fetched columns
 
   useEffect(() => {
-    console.log(selectedColumns)
     const fetchBoards = async () => {
       setLoadingBoards(true);
       try {
@@ -51,7 +50,7 @@ const CustomizationSidebar = ({
       }
     };
     fetchBoards();
-  }, [selectedColumns]);
+  }, []);
 
   const handleBoardSelection = async (boardId, isChecked) => {
     const updatedBoardIds = isChecked
@@ -76,7 +75,9 @@ const CustomizationSidebar = ({
           const fetchedPeopleColumns = await getPeopleColumns([boardId]);
           const fetchedDateColumns = await getDateColumns([boardId]);
           const fetchedStatusColumns = await getStatusColumns([boardId]);
-          const fetchedTimeTrackingColumns = await getTimeTrackingColumns([boardId]);
+          const fetchedTimeTrackingColumns = await getTimeTrackingColumns([
+            boardId,
+          ]);
 
           const newColumns = {
             people: fetchedPeopleColumns.flatMap((board) =>
@@ -121,16 +122,20 @@ const CustomizationSidebar = ({
     }
   };
 
-  const handleColumnSelection = (columnId, boardId, type) => {
-    const columnKey = `${type}@${boardId}@${columnId}`;
-
-    // Remove any previously selected column of the same type for this board
-    const updatedSelectedColumns = selectedColumns.filter(
-      (key) => !key.startsWith(`${type}@${boardId}@`)
-    );
-
-    updatedSelectedColumns.push(columnKey); // Add the newly selected column
-    setSelectedColumns(updatedSelectedColumns);
+  const handleColumnSelection = (value, boardId, type) => {
+    if (value === null || value === undefined) {
+      // Remove the column selection if it was cleared (null or undefined)
+      setSelectedColumns(
+        selectedColumns.filter((key) => !key.startsWith(`${type}@${boardId}`))
+      );
+    } else {
+      let col = value.value;
+      if (!selectedColumns.find((key) => key === `${type}@${boardId}@${col}`)) {
+        const updatedCol = [...selectedColumns];
+        updatedCol.push(`${type}@${boardId}@${col}`);
+        setSelectedColumns(updatedCol);
+      }
+    }
   };
 
   const renderSkeleton = (count) => (
@@ -149,7 +154,7 @@ const CustomizationSidebar = ({
     </div>
   );
 
-  const renderColumnsSection = (title, columns, type, icon, dropdownColor) => {
+  const renderColumnsSection = (title, columns, type) => {
     if (loadingColumns) return renderColSkeleton(1);
     if (columns.length === 0) return null;
 
@@ -162,10 +167,16 @@ const CustomizationSidebar = ({
     return (
       <ExpandCollapse
         title={
-          <span style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ marginRight: "8px", color: dropdownColor }}>
-              {icon}
-            </span>
+          <span
+            className="truncate-text"
+            title={title}
+            style={{
+              maxWidth: "200px",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
             {title}
           </span>
         }
@@ -179,10 +190,18 @@ const CustomizationSidebar = ({
           const selectedColumnKey = selectedColumns.find((key) =>
             key.startsWith(`${type}@${boardId}@`)
           );
-
           const selectedColumnId = selectedColumnKey
             ? selectedColumnKey.split("@")[2]
-            : "";
+            : null;
+
+          // Adjust selectedValue to only include id and title
+          const selectedValue = selectedColumnId
+            ? {
+                value: selectedColumnId,
+                label: boardColumns.find((col) => col.id === selectedColumnId)
+                  ?.title,
+              }
+            : null;
 
           return (
             <div key={boardId} className="mb-4">
@@ -190,32 +209,15 @@ const CustomizationSidebar = ({
                 {boardName}
               </Text>
               <Dropdown
+                clearable={true}
+                value={selectedValue} // Adjusted value matches the options format
                 options={boardColumns.map((col) => ({
                   value: col.id,
-                  label: (
-                    <div style={{ display: "flex", alignItems: "center" }}>
-                      <span
-                        style={{
-                          marginRight: "8px",
-                          color: dropdownColor,
-                        }}
-                      >
-                        {icon}
-                      </span>
-                      {col.title}
-                    </div>
-                  ),
+                  label: col.title,
                 }))}
-                value={selectedColumnId}
-                onChange={(e) => handleColumnSelection(e.value, boardId, type)}
+                onChange={(e) => handleColumnSelection(e, boardId, type)}
                 placeholder={`Select ${title}`}
-                size={Dropdown.sizes.SMALL}
-                style={{
-                  width: "100%",
-                  borderRadius: "6px",
-                  backgroundColor: "#f9f9f9",
-                  zIndex: 1000,
-                }}
+                style={{ width: "100%", zIndex: 1000 }}
               />
             </div>
           );
@@ -226,7 +228,7 @@ const CustomizationSidebar = ({
 
   return (
     <div
-      className={`sidebar p-6 bg-white border border-gray-200 rounded-md shadow-lg fixed top-0 right-0 h-full transition-all duration-300 ${
+      className={`sidebar p-6 bg-white border border-gray-300 rounded-lg shadow-lg fixed top-0 right-0 h-full transition-all duration-300 ${
         isOpen ? "transform translate-x-0" : "transform translate-x-full"
       }`}
       style={{
@@ -247,17 +249,7 @@ const CustomizationSidebar = ({
         />
       </div>
       <hr />
-      <ExpandCollapse
-        title={
-          <span style={{ display: "flex", alignItems: "center" }}>
-            <MdDashboard style={{ marginRight: "8px", color: "#666" }} />
-            Boards
-          </span>
-        }
-        className="my-4"
-        isExpanded
-        size="small"
-      >
+      <ExpandCollapse title="Boards" className="my-4" isExpanded>
         {loadingBoards
           ? renderSkeleton(5)
           : boards.map((board) => (
@@ -275,33 +267,14 @@ const CustomizationSidebar = ({
 
       {selectedBoardIds.length > 0 && (
         <>
-          {renderColumnsSection(
-            "People Columns",
-            peopleColumns,
-            "people",
-            <MdPeople />,
-            "#4caf50"
-          )}
-          {renderColumnsSection(
-            "Status Columns",
-            statusColumns,
-            "status",
-            <MdCheckBox />,
-            "#2196f3"
-          )}
-          {renderColumnsSection(
-            "Date Columns",
-            dateColumns,
-            "date",
-            <MdCalendarToday />,
-            "#ff9800"
-          )}
+          {renderColumnsSection("People Columns", peopleColumns, "people")}
+          {renderColumnsSection("Status Columns", statusColumns, "status")}
+          {renderColumnsSection("Priority Columns", statusColumns, "priority")}
+          {renderColumnsSection("Date Columns", dateColumns, "date")}
           {renderColumnsSection(
             "Time Tracking Columns",
             timeTrackingColumns,
-            "timeTracking",
-            <MdTimer />,
-            "#9c27b0"
+            "timeTracking"
           )}
         </>
       )}

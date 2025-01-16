@@ -52,10 +52,10 @@ const App = () => {
           className="left-group"
           style={{ display: "flex", alignItems: "center" }}
         >
-          {/* <Search
+          <Search
             placeholder="Search"
             onChange={(event) => setSearchQuery(event.target.value)}
-          /> */}
+          />
           <Dropdown
             options={viewOptions}
             searchable={false}

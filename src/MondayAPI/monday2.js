@@ -188,33 +188,17 @@ const getTimeTrackingValues = async (TimeTrackingIds, boardIds) => {
   let response = await monday.api(query);
   return response.data.boards;
 };
-
-const main = async () => {
-  let query = `mutation { create_subitem (parent_item_id: "7574082167" item_name: "Subitem1" column_values: "{\"status_1__1\": \"0\"}") {id} }`;
-
-  console.log(JSON.stringify(query));
-
-  let data4 = await monday.api(JSON.stringify(query));
-  return data4;
-  let data = await getStatusValues(["status"], [7574082160]);
-  let data2 = await getStatusColumns([7574082160, 8144313397]);
-  let data3 = await getBoardsData([7574082160, 8144313397]);
-  return data;
-};
-
-(async () => {
-  let a = await main();
-  console.dir(a, { depth: null });
-})();
-
-const getProfilePicturesOfUsers = async (userIds) => {
+const getPhotos = async (userIds) => {
   //construct query
   let query = `query {
-                users(limit: 500 ids: [${userIds.map((id) => id).join(",")}]) {
-                  id
-                  photo_thumb_small
-                }
-              }`;
+    users(limit: 500, ids: [${[...userIds]
+      .map((id) => `"${id}"`)
+      .join(", ")}]) {
+      id
+      name
+      photo_thumb_small
+    }
+  }`;
 
   try {
     const response = await monday.api(query);
@@ -225,12 +209,52 @@ const getProfilePicturesOfUsers = async (userIds) => {
   }
 };
 
+const getProfilePhotosfromResponse = (response) => {
+  const userIds = new Set();
+
+  // Loop through each board
+  response.forEach((board) => {
+    // Loop through each item in the board
+    board.items_page.items.forEach((item) => {
+      // Loop through the column values
+      item.column_values.forEach((columnValue) => {
+        // Check if it's the person column
+        if (columnValue.id === "person" && columnValue.persons_and_teams) {
+          // Loop through each person in the persons_and_teams array
+          columnValue.persons_and_teams.forEach((person) => {
+            if (person.id) {
+              userIds.add(person.id); // Add user ID to the Set
+            }
+          });
+        }
+      });
+    });
+  });
+
+  // Return the unique user IDs as an array
+  return getPhotos(userIds);
+};
+
+const main = async () => {
+  let data = await getPersonValues(
+    ["status", "person"],
+    [7574082160, 8202834590]
+  );
+  let data4 = await getProfilePhotosfromResponse(data);
+  return data4;
+};
+
+(async () => {
+  let a = await main();
+  console.dir(a, { depth: null });
+})();
+
 // Export functions
 module.exports = {
   getBoards,
   getBoardsData,
   getPeopleColumns,
-  getProfilePicturesOfUsers,
+  getProfilePicturesOfUsers: getPhotos,
   getDateColumns,
   getStatusColumns,
   getTimeTrackingColumns,
@@ -238,4 +262,5 @@ module.exports = {
   getStatusValues,
   getTimeTrackingValues,
   getDateValues,
+  getProfilePhotosfromResponse,
 };
