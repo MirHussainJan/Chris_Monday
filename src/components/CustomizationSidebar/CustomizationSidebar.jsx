@@ -209,6 +209,7 @@ const CustomizationSidebar = ({
                 {boardName}
               </Text>
               <Dropdown
+                size="small"
                 clearable={true}
                 value={selectedValue} // Adjusted value matches the options format
                 options={boardColumns.map((col) => ({

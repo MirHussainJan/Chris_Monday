@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FaUsers, FaClock, FaTasks } from "react-icons/fa";
+import { FaUsers } from "react-icons/fa";
 import {
   Table as MondayTable,
   TableHeader,
@@ -8,7 +8,7 @@ import {
   TableRow,
   TableCell,
   Label,
-  Text,
+  AvatarGroup,
   Avatar,
 } from "monday-ui-react-core";
 import SkeletonLoader from "./SkeletonLoader";
@@ -31,10 +31,8 @@ const Table = ({
   setEnrichedData,
 }) => {
   const [data, setData] = useState([]);
-  const [personData, setPersonData] = useState({});
   const [loading, setLoading] = useState(false);
-  const [showSummary, setShowSummary] = useState(false);
-  const [photos, setphotos] = useState({});
+  const [photos, setPhotos] = useState({});
   const defaultColumns = [
     { id: "name", title: "Item Name" },
     { id: "group", title: "Group" },
@@ -43,25 +41,8 @@ const Table = ({
     { id: "date", title: "Date" },
     { id: "status", title: "Status" },
     { id: "priority", title: "Priority" },
-    { id: "time_tracking", title: "Time Tracking" },
+    { id: "timeTracking", title: "Time Tracking" },
   ];
-
-  const statusColors = {
-    "Not Started": "gray",
-    "Working on it": "#fdab3d",
-    Done: "#00c875",
-    Stuck: "#df2f4a",
-    "": "#007eb5",
-    null: "#c4c4c4",
-  };
-
-  const priorityColors = {
-    "High Priority": "red",
-    "Medium Priority": "orange",
-    "Low Priority": "green",
-    Urgent: "purple",
-    Normal: "blue",
-  };
 
   const formatDate = (dateString) => {
     if (!dateString) return "-";
@@ -73,10 +54,7 @@ const Table = ({
     if (!seconds || isNaN(seconds)) return "-";
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = seconds % 60;
-    return hours > 0
-      ? `${hours}h ${minutes}m ${remainingSeconds}s`
-      : `${minutes}m ${remainingSeconds}s`;
+    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   };
 
   const parsedColumns = selectedPeopleColumns.map((col) => {
@@ -118,17 +96,17 @@ const Table = ({
             const personColumns = columnBoardMapping.filter(({ columnId }) =>
               columnId.includes("person")
             );
+            const dateColumns = columnBoardMapping.filter(({ columnId }) =>
+              columnId.includes("date")
+            );
+            const timeTrackingColumns = columnBoardMapping.filter(({ columnId }) =>
+              columnId.includes("timeTracking")
+            );
             const statusColumns = columnBoardMapping.filter(({ columnId }) =>
               columnId.includes("status")
             );
             const priorityColumns = columnBoardMapping.filter(({ columnId }) =>
               columnId.includes("priority")
-            );
-            const dateColumns = columnBoardMapping.filter(({ columnId }) =>
-              columnId.includes("date")
-            );
-            const timeTrackingColumns = columnBoardMapping.filter(
-              ({ columnId }) => columnId.includes("time_tracking")
             );
 
             const personValues = personColumns.length
@@ -138,7 +116,6 @@ const Table = ({
                 )
               : [];
 
-            // Fetch profile photos
             const profilePhotosResponse = await getProfilePhotosfromResponse(
               personValues
             );
@@ -148,22 +125,7 @@ const Table = ({
               return acc;
             }, {});
 
-            setphotos(photos);
-            console.log("P", photos);
-
-            const statusValues = statusColumns.length
-              ? await getStatusValues(
-                  statusColumns.map((c) => c.columnId),
-                  statusColumns.map((c) => c.boardId)
-                )
-              : [];
-
-            const priorityValues = priorityColumns.length
-              ? await getStatusValues(
-                  priorityColumns.map((c) => c.columnId),
-                  priorityColumns.map((c) => c.boardId)
-                )
-              : [];
+            setPhotos(photos);
 
             const dateValues = dateColumns.length
               ? await getDateValues(
@@ -179,55 +141,96 @@ const Table = ({
                 )
               : [];
 
+            const statusValues = statusColumns.length
+              ? await getStatusValues(
+                  statusColumns.map((c) => c.columnId),
+                  statusColumns.map((c) => c.boardId)
+                )
+              : [];
+
+            const priorityValues = priorityColumns.length
+              ? await getStatusValues(
+                  priorityColumns.map((c) => c.columnId),
+                  priorityColumns.map((c) => c.boardId)
+                )
+              : [];
+
             const mapping = {};
 
-            const mergeValues = (values, valueKey = "text", columnType) => {
-              values.forEach((board) => {
-                board.items_page.items.forEach((item) => {
-                  const itemId = item.id;
-                  if (!mapping[itemId]) mapping[itemId] = {};
-                  item.column_values.forEach((col) => {
-                    const key = `${columnType}@${board.id}@${col.id}`;
-                    mapping[itemId][key] = {
-                      value: col[valueKey] || col.text || "-",
-                      columnType,
-                    };
-                  });
-                });
-              });
-            };
-
-            // Separate handling for person columns
             personColumns.forEach(({ columnId, boardId }) => {
+              console.log(personValues, "For now");
+            
               personValues.forEach((board) => {
                 board.items_page.items.forEach((item) => {
                   const itemId = item.id;
+            
                   if (!mapping[itemId]) mapping[itemId] = {};
+            
                   item.column_values.forEach((col) => {
                     if (col.id === columnId) {
                       const personIds = col.persons_and_teams || [];
-                      const photoUrls = personIds
-                        .map((person) => photos[person.id] || null)
-                        .filter((url) => url); // Filter out null values
-                      const value = photoUrls.length > 0 ? photoUrls : ["-"];
+            
+                      const value = personIds.map((person) => ({
+                        id: person.id,
+                        name: col.text || person.name,
+                        photo: photos[person.id] || null,
+                      }));
+            
                       mapping[itemId][`person@${boardId}@${columnId}`] = {
-                        value: value.join(", "), // Join with commas if multiple
-                        columnType: "person",
+                        value,
                       };
                     }
                   });
                 });
               });
             });
+                       
 
-            // Merge values for status, priority, date, and time tracking
-            mergeValues(statusValues, "text", "status");
-            mergeValues(priorityValues, "text", "priority");
-            mergeValues(dateValues, "text", "date");
-            mergeValues(timeTrackingValues, "duration", "time_tracking");
+            dateValues.forEach((board) => {
+              board.items_page.items.forEach((item) => {
+                const itemId = item.id;
+                if (!mapping[itemId]) mapping[itemId] = {};
+                item.column_values.forEach((col) => {
+                  const key = `date@${board.id}@${col.id}`;
+                  mapping[itemId][key] = col.text || "-";
+                });
+              });
+            });
 
-            console.log("map", mapping);
-            setPersonData(mapping);
+            timeTrackingValues.forEach((board) => {
+              board.items_page.items.forEach((item) => {
+                const itemId = item.id;
+                if (!mapping[itemId]) mapping[itemId] = {};
+                item.column_values.forEach((col) => {
+                  const key = `timeTracking@${board.id}@${col.id}`;
+                  mapping[itemId][key] = formatDuration(
+                    col.additional_info?.tracked_seconds || 0
+                  );
+                });
+              });
+            });
+
+            statusValues.forEach((board) => {
+              board.items_page.items.forEach((item) => {
+                const itemId = item.id;
+                if (!mapping[itemId]) mapping[itemId] = {};
+                item.column_values.forEach((col) => {
+                  const key = `status@${board.id}@${col.id}`;
+                  mapping[itemId][key] = col.text || "-";
+                });
+              });
+            });
+
+            priorityValues.forEach((board) => {
+              board.items_page.items.forEach((item) => {
+                const itemId = item.id;
+                if (!mapping[itemId]) mapping[itemId] = {};
+                item.column_values.forEach((col) => {
+                  const key = `priority@${board.id}@${col.id}`;
+                  mapping[itemId][key] = col.text || "-";
+                });
+              });
+            });
 
             const enrichedData = mergedData.map((item) => ({
               ...item,
@@ -247,72 +250,63 @@ const Table = ({
     fetchData();
   }, [boardIds, selectedPeopleColumns]);
 
-  const toggleSummary = () => {
-    setShowSummary(!showSummary);
-  };
-
-  // Calculate summary data
-  const calculateSummary = () => {
-    const totalPeople = new Set();
-    let totalTime = 0;
-    const taskStatus = {};
-    const taskPriority = {};
-    const boardTitles = new Set();
-
-    data.forEach((item) => {
-      parsedColumns.forEach(({ columnId, boardId }) => {
-        const value =
-          item.boardId === boardId &&
-          personData[item.id] &&
-          personData[item.id][columnId]?.value;
-
-        // Track unique people
-        if (columnId.includes("person") && value) {
-          totalPeople.add(value);
-        }
-
-        // Track task statuses
-        if (columnId.includes("status") && value) {
-          taskStatus[value] = taskStatus[value] ? taskStatus[value] + 1 : 1;
-        }
-
-        // Track task priorities
-        if (columnId.includes("priority") && value) {
-          taskPriority[value] = taskPriority[value]
-            ? taskPriority[value] + 1
-            : 1;
-        }
-
-        // Track time tracking totals
-        if (columnId.includes("time_tracking") && value) {
-          totalTime += value; // Assuming 'value' is in seconds
-        }
-
-        // Track unique board titles
-        if (columnId.includes("boardtitle")) {
-          boardTitles.add(item.boardtitle); // Adds board title for unique boards
-        }
-      });
-    });
-
-    return {
-      totalPeople: totalPeople.size,
-      totalTime: formatDuration(totalTime), // Format the time duration
-      taskStatus,
-      taskPriority, // Add taskPriority
-      uniqueBoardTitles: boardTitles.size, // Count the number of unique board titles
-    };
-  };
-
-  const summary = calculateSummary();
-
-  const renderCell = (enrichedColumns, type) => {
+  const renderPersonCell = (enrichedColumns) => {
     const columnKeys = Object.keys(enrichedColumns).filter((key) =>
-      key.startsWith(`${type}@`)
+      key.startsWith("person@")
     );
+    if (columnKeys.length > 0) {
+      const persons = enrichedColumns[columnKeys[0]].value;
+      console.log("Persons",persons)
+      return (
+        <AvatarGroup max={3} size="medium">
+          {persons.map((person) => (
+            <Avatar
+              key={person.id}
+              src={person.photo}
+              ariaLabel={person.name || "Unknown"}
+              type="img"
+              fallbackIcon={<FaUsers />}
+            />
+          ))}
+        </AvatarGroup>
+      );
+    }
+    return "-";
+  };
 
-    // Ensure only one value is returned per column
-    return columnKeys.length > 0 ? enrichedColumns[columnKeys[0]].value : "-";
+  const renderDateCell = (enrichedColumns) => {
+    const columnKeys = Object.keys(enrichedColumns).filter((key) =>
+      key.startsWith("date@")
+    );
+    const dateValue = columnKeys.length > 0 ? enrichedColumns[columnKeys[0]] : null;
+    return dateValue ? <Label text={formatDate(dateValue)} /> : "-";
+  };
+
+  const renderTimeTrackingCell = (enrichedColumns) => {
+    const columnKeys = Object.keys(enrichedColumns).filter((key) =>
+      key.startsWith("time_tracking@")
+    );
+    return columnKeys.length > 0
+      ? enrichedColumns[columnKeys[0]]
+      : "-";
+  };
+
+  const renderStatusCell = (enrichedColumns) => {
+    const columnKeys = Object.keys(enrichedColumns).filter((key) =>
+      key.startsWith("status@")
+    );
+    return columnKeys.length > 0
+      ? enrichedColumns[columnKeys[0]]
+      : "-";
+  };
+
+  const renderPriorityCell = (enrichedColumns) => {
+    const columnKeys = Object.keys(enrichedColumns).filter((key) =>
+      key.startsWith("priority@")
+    );
+    return columnKeys.length > 0
+      ? enrichedColumns[columnKeys[0]]
+      : "-";
   };
 
   return (
@@ -321,12 +315,12 @@ const Table = ({
         columns={columns}
         className="w-full border border-gray-300 rounded-lg overflow-hidden"
       >
-        <TableHeader className="border-b border-gray-300 border-[0.5px]">
+        <TableHeader>
           {columns.map((col) => (
             <TableHeaderCell
               key={col.id}
               title={col.title}
-              className="text-center font-semibold text-sm"
+              className="flex justify-center font-semibold text-sm"
             />
           ))}
         </TableHeader>
@@ -335,10 +329,7 @@ const Table = ({
             ? Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={index} className="bg-gray-50">
                   {defaultColumns.map((col) => (
-                    <TableCell
-                      key={col.id}
-                      className="border-b border-r border-gray-300"
-                    >
+                    <TableCell key={col.id} className="border-b border-r">
                       <SkeletonLoader />
                     </TableCell>
                   ))}
@@ -353,88 +344,21 @@ const Table = ({
                     key={item.id}
                     className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
                   >
-                    <TableCell className="border-b border-r border-gray-300">
-                      {item.name || "-"}
+                    <TableCell className="border border-gray flex justify-center">{item.name || "-"}</TableCell>
+                    <TableCell className="border border-gray flex justify-center">
+                      <Label text={item.group?.title || "-"} />
                     </TableCell>
-                    <TableCell className="border-b border-r border-gray-300">
-                      <Label text={item.group?.title || "-"}></Label>
-                    </TableCell>
-                    <TableCell className="border-b border-r border-gray-300">
-                      {item.boardname || "-"} {/* Board Title */}
-                    </TableCell>
-                    <TableCell className="flex justify-center items-center border-b border-r border-gray-300">
-                      <Avatar
-                        src={renderCell(enrichedColumns, "person")}
-                        type="img"
-                        size="medium"
-                      ></Avatar>
-                    </TableCell>
-                    <TableCell className="border-b border-r border-gray-300">
-                      <Label
-                        text={renderCell(enrichedColumns, "date", item.boardId)}
-                      ></Label>
-                    </TableCell>
-                    <TableCell className="border-b border-r border-gray-300">
-                      {renderCell(enrichedColumns, "status", item.boardId)}
-                    </TableCell>
-                    <TableCell className="border-b border-r border-gray-300">
-                      {renderCell(enrichedColumns, "priority", item.boardId)}
-                    </TableCell>
-                    <TableCell className="border-b border-r border-gray-300">
-                      {renderCell(
-                        enrichedColumns,
-                        "time_tracking",
-                        item.boardId
-                      )}
-                    </TableCell>
+                    <TableCell className="border border-gray flex justify-center">{item.boardname || "-"}</TableCell>
+                    <TableCell className="border border-gray flex justify-center">{renderPersonCell(enrichedColumns)}</TableCell>
+                    <TableCell className="border border-gray flex justify-center">{renderDateCell(enrichedColumns)}</TableCell>
+                    <TableCell className="border border-gray flex justify-center">{renderStatusCell(enrichedColumns)}</TableCell>
+                    <TableCell className="border border-gray flex justify-center">{renderPriorityCell(enrichedColumns)}</TableCell>
+                    <TableCell className="border border-gray flex justify-center">{renderTimeTrackingCell(enrichedColumns)}</TableCell>
                   </TableRow>
                 );
               })}
         </TableBody>
       </MondayTable>
-      {/* Summary Toggle Button */}
-      <button
-        onClick={toggleSummary}
-        className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-lg"
-      >
-        {showSummary ? "Hide Summary" : "Show Summary"}
-      </button>
-
-      {/* Show summary if visible */}
-      {showSummary && (
-        <div className="mt-4 p-4 border rounded-lg bg-gray-50">
-          <h4 className="font-semibold">Summary</h4>
-          <p>
-            <strong>Total People Involved:</strong> {summary.totalPeople}
-          </p>
-          <p>
-            <strong>Status Summary:</strong>
-            <ul>
-              {Object.entries(summary.taskStatus).map(([status, count]) => (
-                <li key={status}>
-                  {status}: {count} tasks
-                </li>
-              ))}
-            </ul>
-          </p>
-          <p>
-            <strong>Priority Summary:</strong>
-            <ul>
-              {Object.entries(summary.taskPriority).map(([priority, count]) => (
-                <li key={priority}>
-                  {priority}: {count} tasks
-                </li>
-              ))}
-            </ul>
-          </p>
-          <p>
-            <strong>Total Time Tracked:</strong> {summary.totalTime}
-          </p>
-          <p>
-            <strong>Total Unique Boards:</strong> {summary.uniqueBoardTitles}
-          </p>
-        </div>
-      )}
     </div>
   );
 };

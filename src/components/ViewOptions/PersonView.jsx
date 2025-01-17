@@ -8,7 +8,10 @@ import {
   TableBody,
   TableRow,
   TableCell,
+  AvatarGroup,
+  Avatar,
 } from "monday-ui-react-core";
+import { FaUsers } from "react-icons/fa"; // Fallback icon
 
 const PersonView = ({ data }) => {
   const [groupedByPerson, setGroupedByPerson] = useState({});
@@ -18,22 +21,24 @@ const PersonView = ({ data }) => {
   useEffect(() => {
     const grouped = data.reduce((acc, task) => {
       const person = task.enrichedColumns.person?.value;
-      if (!person) return acc;
+      if (!person || !Array.isArray(person) || person.length === 0) return acc;
 
-      if (!acc[person]) {
-        acc[person] = [];
-      }
-      acc[person].push(task);
+      person.forEach((p) => {
+        if (!acc[p.id]) {
+          acc[p.id] = { name: p.name, photo: p.photo, tasks: [] };
+        }
+        acc[p.id].tasks.push(task);
+      });
       return acc;
     }, {});
     setGroupedByPerson(grouped);
   }, [data]);
 
-  const togglePerson = (person) => {
+  const togglePerson = (personId) => {
     setExpandedPersons((prev) =>
-      prev.includes(person)
-        ? prev.filter((p) => p !== person)
-        : [...prev, person]
+      prev.includes(personId)
+        ? prev.filter((p) => p !== personId)
+        : [...prev, personId]
     );
   };
 
@@ -43,8 +48,9 @@ const PersonView = ({ data }) => {
 
     // Gather unique column types from enriched columns
     personTasks.forEach((task) => {
-      Object.values(task.enrichedColumns).forEach((col) => {
-        columnTypes[col.columnType] = col.columnType;
+      Object.keys(task.enrichedColumns).forEach((key) => {
+        const columnId = key.split('@')[0]; // Extract the column type like 'status', 'date'
+        columnTypes[columnId] = columnId;
       });
     });
 
@@ -64,17 +70,18 @@ const PersonView = ({ data }) => {
   return (
     <div className="person-view">
       <Accordion>
-        {Object.keys(groupedByPerson).map((person) => {
-          const personTasks = groupedByPerson[person];
+        {Object.keys(groupedByPerson).map((personId) => {
+          const person = groupedByPerson[personId];
+          const personTasks = person.tasks;
           const recordCount = personTasks.length;
           const columns = generateColumns(personTasks);
 
           return (
             <AccordionItem
-              key={person}
-              title={`Person: ${person} (${recordCount} tasks)`}
-              isOpen={expandedPersons.includes(person)}
-              onClick={() => togglePerson(person)}
+              key={personId}
+              title={`Person: ${person.name} (${recordCount} tasks)`}
+              isOpen={expandedPersons.includes(personId)}
+              onClick={() => togglePerson(personId)}
             >
               <Table columns={columns}>
                 <TableHeader>
@@ -89,10 +96,9 @@ const PersonView = ({ data }) => {
                       <TableCell>{task.group?.title || "-"}</TableCell>
 
                       {columns.slice(2).map((col) => {
-                        const enrichedValue = task.enrichedColumns[col.id];
-                        const displayValue = enrichedValue
-                          ? enrichedValue.value
-                          : "-";
+                        const enrichedValue = task.enrichedColumns[col.id + "@" + task.boardId];
+
+                        const displayValue = enrichedValue ? enrichedValue.value : "-";
 
                         return (
                           <TableCell key={col.id}>{displayValue}</TableCell>

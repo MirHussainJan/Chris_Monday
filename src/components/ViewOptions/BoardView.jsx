@@ -8,8 +8,10 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Label,
+  AvatarGroup,
+  Avatar,
 } from "monday-ui-react-core";
+import { FaUsers } from "react-icons/fa"; // Fallback icon
 
 const BoardView = ({ data }) => {
   const [groupedByBoard, setGroupedByBoard] = useState({});
@@ -39,10 +41,11 @@ const BoardView = ({ data }) => {
   const generateColumns = (boardData) => {
     const columnTypes = {};
 
-    // Gather unique column types
+    // Gather unique column types from the enrichedColumns
     boardData.forEach((task) => {
-      Object.values(task.enrichedColumns).forEach((col) => {
-        columnTypes[col.columnType] = col.columnType;
+      Object.keys(task.enrichedColumns).forEach((key) => {
+        const columnId = key.split('@')[0]; // Extract the type like 'status', 'person', 'date'
+        columnTypes[columnId] = columnId;
       });
     });
 
@@ -54,8 +57,29 @@ const BoardView = ({ data }) => {
         title: type.charAt(0).toUpperCase() + type.slice(1),
       })),
     ];
-
     return columns;
+  };
+
+  // Render the cell for 'person@' type columns
+  const renderPersonCell = (persons) => {
+    const validPersons = Array.isArray(persons) ? persons : [];
+    return (
+      <AvatarGroup max={3} size="medium">
+        {validPersons.length > 0 ? (
+          validPersons.map((person) => (
+            <Avatar
+              key={person.id}
+              src={person.photo}
+              ariaLabel={person.name || "Unknown"}
+              type="img"
+              fallbackIcon={<FaUsers />}
+            />
+          ))
+        ) : (
+          <Avatar fallbackIcon={<FaUsers />} ariaLabel="No person assigned" />
+        )}
+      </AvatarGroup>
+    );
   };
 
   return (
@@ -86,13 +110,33 @@ const BoardView = ({ data }) => {
                       <TableCell>{task.group?.title || "-"}</TableCell>
 
                       {columns.slice(2).map((col) => {
-                        const enrichedValue = task.enrichedColumns[col.id];
-                        const displayValue = enrichedValue
-                          ? enrichedValue.value
-                          : "-";
+                        const enrichedValue = task.enrichedColumns[col.id + "@" + task.boardId];
+
+                        // Render the 'person@' column properly
+                        if (col.id === "person") {
+                          return (
+                            <TableCell key={col.id}>
+                              {renderPersonCell(enrichedValue?.value)}
+                            </TableCell>
+                          );
+                        }
+
+                        if (col.id === "status") {
+                          return (
+                            <TableCell key={col.id}>{enrichedValue || "-"}</TableCell>
+                          );
+                        }
+
+                        if (col.id === "date") {
+                          return (
+                            <TableCell key={col.id}>
+                              {enrichedValue || "-"}
+                            </TableCell>
+                          );
+                        }
 
                         return (
-                          <TableCell key={col.id}>{displayValue}</TableCell>
+                          <TableCell key={col.id}>{enrichedValue || "-"}</TableCell>
                         );
                       })}
                     </TableRow>
