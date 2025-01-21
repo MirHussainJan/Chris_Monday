@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  Accordion,
-  AccordionItem,
+  ExpandCollapse,
   Table,
   TableHeader,
   TableHeaderCell,
@@ -15,7 +14,6 @@ import { FaUsers } from "react-icons/fa"; // Fallback icon
 
 const BoardView = ({ data }) => {
   const [groupedByBoard, setGroupedByBoard] = useState({});
-  const [expandedBoards, setExpandedBoards] = useState([]);
 
   // Group tasks by boardId whenever `data` changes
   useEffect(() => {
@@ -27,29 +25,24 @@ const BoardView = ({ data }) => {
       return acc;
     }, {});
     setGroupedByBoard(grouped);
+    console.log("Grouped Data:", grouped); // Debugging grouped data
   }, [data]);
 
-  const toggleBoard = (boardId) => {
-    setExpandedBoards((prev) =>
-      prev.includes(boardId)
-        ? prev.filter((board) => board !== boardId)
-        : [...prev, boardId]
-    );
-  };
-
-  // Helper function to create columns based on enriched data
+  // Generate dynamic columns for each board based on `enrichedColumns`
   const generateColumns = (boardData) => {
     const columnTypes = {};
 
     // Gather unique column types from the enrichedColumns
     boardData.forEach((task) => {
-      Object.keys(task.enrichedColumns).forEach((key) => {
-        const columnId = key.split('@')[0]; // Extract the type like 'status', 'person', 'date'
-        columnTypes[columnId] = columnId;
-      });
+      if (task.enrichedColumns) {
+        Object.keys(task.enrichedColumns).forEach((key) => {
+          const columnId = key.split('@')[0]; // Extract the type like 'status', 'person', 'date'
+          columnTypes[columnId] = columnId;
+        });
+      }
     });
 
-    const columns = [
+    return [
       { id: "taskName", title: "Task Name" },
       { id: "group", title: "Group" },
       ...Object.keys(columnTypes).map((type) => ({
@@ -57,10 +50,9 @@ const BoardView = ({ data }) => {
         title: type.charAt(0).toUpperCase() + type.slice(1),
       })),
     ];
-    return columns;
   };
 
-  // Render the cell for 'person@' type columns
+  // Render the 'person@' column as an AvatarGroup
   const renderPersonCell = (persons) => {
     const validPersons = Array.isArray(persons) ? persons : [];
     return (
@@ -84,21 +76,20 @@ const BoardView = ({ data }) => {
 
   return (
     <div className="board-view">
-      <Accordion>
-        {Object.keys(groupedByBoard).map((boardId) => {
-          const boardData = groupedByBoard[boardId];
-          const columns = generateColumns(boardData);
-          const recordCount = boardData.length;
+      {Object.keys(groupedByBoard).map((boardId) => {
+        const boardData = groupedByBoard[boardId];
+        const columns = generateColumns(boardData);
+        const boardName = boardData[0]?.boardname || `Board ${boardId}`; // Get board name or fallback to board ID
 
-          return (
-            <AccordionItem
-              key={boardId}
-              title={`Board ID: ${boardId} (${recordCount} records)`}
-              isOpen={expandedBoards.includes(boardId)}
-              onClick={() => toggleBoard(boardId)}
+        return (
+          <div key={boardId} className="board-section">
+            <ExpandCollapse
+              title={`${boardName} (${boardData.length} tasks)`}
+              hideBorder
+              isDefaultOpen={true}
             >
               <Table columns={columns}>
-                <TableHeader>
+                <TableHeader className="zindex">
                   {columns.map((col) => (
                     <TableHeaderCell key={col.id} title={col.title} />
                   ))}
@@ -106,47 +97,37 @@ const BoardView = ({ data }) => {
                 <TableBody>
                   {boardData.map((task) => (
                     <TableRow key={task.id}>
-                      <TableCell>{task.name}</TableCell>
-                      <TableCell>{task.group?.title || "-"}</TableCell>
+                      <TableCell>{task.name || "No Task Name"}</TableCell>
+                      <TableCell>{task.group?.title || "No Group Title"}</TableCell>
 
                       {columns.slice(2).map((col) => {
-                        const enrichedValue = task.enrichedColumns[col.id + "@" + task.boardId];
+                        const enrichedValue =
+                          task.enrichedColumns?.[col.id + "@" + task.boardId]?.value;
 
                         // Render the 'person@' column properly
                         if (col.id === "person") {
                           return (
                             <TableCell key={col.id}>
-                              {renderPersonCell(enrichedValue?.value)}
+                              {renderPersonCell(enrichedValue)}
                             </TableCell>
                           );
                         }
 
-                        if (col.id === "status") {
-                          return (
-                            <TableCell key={col.id}>{enrichedValue || "-"}</TableCell>
-                          );
-                        }
-
-                        if (col.id === "date") {
-                          return (
-                            <TableCell key={col.id}>
-                              {enrichedValue || "-"}
-                            </TableCell>
-                          );
-                        }
-
+                        // Handle other enriched column types
                         return (
-                          <TableCell key={col.id}>{enrichedValue || "-"}</TableCell>
+                          <TableCell key={col.id}>
+                            {enrichedValue || "-"}
+                          </TableCell>
                         );
                       })}
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            </AccordionItem>
-          );
-        })}
-      </Accordion>
+            </ExpandCollapse>
+          </div>
+        );
+      })}
     </div>
   );
 };

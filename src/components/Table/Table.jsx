@@ -10,6 +10,7 @@ import {
   Label,
   AvatarGroup,
   Avatar,
+  Text,
 } from "monday-ui-react-core";
 import SkeletonLoader from "./SkeletonLoader";
 import "monday-ui-react-core/dist/main.css";
@@ -65,6 +66,7 @@ const Table = ({
   const columns = [...defaultColumns];
 
   useEffect(() => {
+    console.log(enrichedData, "Enriched Data from Table View");
     const fetchData = async () => {
       if (boardIds.length > 0) {
         setLoading(true);
@@ -99,8 +101,8 @@ const Table = ({
             const dateColumns = columnBoardMapping.filter(({ columnId }) =>
               columnId.includes("date")
             );
-            const timeTrackingColumns = columnBoardMapping.filter(({ columnId }) =>
-              columnId.includes("timeTracking")
+            const timeTrackingColumns = columnBoardMapping.filter(
+              ({ columnId }) => columnId.includes("timeTracking")
             );
             const statusColumns = columnBoardMapping.filter(({ columnId }) =>
               columnId.includes("status")
@@ -147,6 +149,7 @@ const Table = ({
                   statusColumns.map((c) => c.boardId)
                 )
               : [];
+            console.log("Status Values Response:", statusValues); // Added log for debugging
 
             const priorityValues = priorityColumns.length
               ? await getStatusValues(
@@ -159,23 +162,23 @@ const Table = ({
 
             personColumns.forEach(({ columnId, boardId }) => {
               console.log(personValues, "For now");
-            
+
               personValues.forEach((board) => {
                 board.items_page.items.forEach((item) => {
                   const itemId = item.id;
-            
+
                   if (!mapping[itemId]) mapping[itemId] = {};
-            
+
                   item.column_values.forEach((col) => {
                     if (col.id === columnId) {
                       const personIds = col.persons_and_teams || [];
-            
+
                       const value = personIds.map((person) => ({
                         id: person.id,
                         name: col.text || person.name,
                         photo: photos[person.id] || null,
                       }));
-            
+
                       mapping[itemId][`person@${boardId}@${columnId}`] = {
                         value,
                       };
@@ -184,7 +187,6 @@ const Table = ({
                 });
               });
             });
-                       
 
             dateValues.forEach((board) => {
               board.items_page.items.forEach((item) => {
@@ -216,7 +218,10 @@ const Table = ({
                 if (!mapping[itemId]) mapping[itemId] = {};
                 item.column_values.forEach((col) => {
                   const key = `status@${board.id}@${col.id}`;
-                  mapping[itemId][key] = col.text || "-";
+                  mapping[itemId][key] = {
+                    text: col.text || "-",
+                    color: col.label_style?.color || "#000000",
+                  };
                 });
               });
             });
@@ -256,7 +261,7 @@ const Table = ({
     );
     if (columnKeys.length > 0) {
       const persons = enrichedColumns[columnKeys[0]].value;
-      console.log("Persons",persons)
+      console.log("Persons", persons);
       return (
         <AvatarGroup max={3} size="medium">
           {persons.map((person) => (
@@ -278,7 +283,8 @@ const Table = ({
     const columnKeys = Object.keys(enrichedColumns).filter((key) =>
       key.startsWith("date@")
     );
-    const dateValue = columnKeys.length > 0 ? enrichedColumns[columnKeys[0]] : null;
+    const dateValue =
+      columnKeys.length > 0 ? enrichedColumns[columnKeys[0]] : null;
     return dateValue ? <Label text={formatDate(dateValue)} /> : "-";
   };
 
@@ -286,27 +292,41 @@ const Table = ({
     const columnKeys = Object.keys(enrichedColumns).filter((key) =>
       key.startsWith("time_tracking@")
     );
-    return columnKeys.length > 0
-      ? enrichedColumns[columnKeys[0]]
-      : "-";
+    return columnKeys.length > 0 ? enrichedColumns[columnKeys[0]] : "-";
   };
 
   const renderStatusCell = (enrichedColumns) => {
     const columnKeys = Object.keys(enrichedColumns).filter((key) =>
       key.startsWith("status@")
     );
-    return columnKeys.length > 0
-      ? enrichedColumns[columnKeys[0]]
-      : "-";
+    if (columnKeys.length > 0) {
+      const { text, color } = enrichedColumns[columnKeys[0]] || {};
+      return (
+        <Text
+          className="w-full flex text-center justify-center items-center h-full"
+          style={{
+            backgroundColor: color || "#000000",
+            color: "#ffffff",
+          }}
+        >
+          {text || "-"}
+        </Text>
+      );
+    }
+    return (
+      <Text
+        className="w-full flex text-center justify-center items-center h-full"
+      >
+        {"-"}
+      </Text>
+    );;
   };
 
   const renderPriorityCell = (enrichedColumns) => {
     const columnKeys = Object.keys(enrichedColumns).filter((key) =>
       key.startsWith("priority@")
     );
-    return columnKeys.length > 0
-      ? enrichedColumns[columnKeys[0]]
-      : "-";
+    return columnKeys.length > 0 ? enrichedColumns[columnKeys[0]] : "-";
   };
 
   return (
@@ -315,7 +335,7 @@ const Table = ({
         columns={columns}
         className="w-full border border-gray-300 rounded-lg overflow-hidden"
       >
-        <TableHeader>
+        <TableHeader className="zindex">
           {columns.map((col) => (
             <TableHeaderCell
               key={col.id}
@@ -340,20 +360,32 @@ const Table = ({
                   enrichedData.find((p) => p.id === item.id)?.enrichedColumns ||
                   {};
                 return (
-                  <TableRow
-                    key={item.id}
-                    className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
-                  >
-                    <TableCell className="border border-gray flex justify-center">{item.name || "-"}</TableCell>
+                  <TableRow key={item.id}>
+                    <TableCell className="border border-gray flex justify-center">
+                      {item.name || "-"}
+                    </TableCell>
                     <TableCell className="border border-gray flex justify-center">
                       <Label text={item.group?.title || "-"} />
                     </TableCell>
-                    <TableCell className="border border-gray flex justify-center">{item.boardname || "-"}</TableCell>
-                    <TableCell className="border border-gray flex justify-center">{renderPersonCell(enrichedColumns)}</TableCell>
-                    <TableCell className="border border-gray flex justify-center">{renderDateCell(enrichedColumns)}</TableCell>
-                    <TableCell className="border border-gray flex justify-center">{renderStatusCell(enrichedColumns)}</TableCell>
-                    <TableCell className="border border-gray flex justify-center">{renderPriorityCell(enrichedColumns)}</TableCell>
-                    <TableCell className="border border-gray flex justify-center">{renderTimeTrackingCell(enrichedColumns)}</TableCell>
+                    <TableCell className="border border-gray flex justify-center">
+                      {item.boardname || "-"}
+                    </TableCell>
+                    <TableCell className="border border-gray flex justify-center">
+                      {renderPersonCell(enrichedColumns)}
+                    </TableCell>
+                    <TableCell className="border border-gray flex justify-center">
+                      {renderDateCell(enrichedColumns)}
+                    </TableCell>
+                    <TableCell className="border items-center padding-status text-white border-gray">
+                      {renderStatusCell(enrichedColumns)}
+                    </TableCell>
+
+                    <TableCell className="border bg-dynamic text-white border-gray flex justify-center">
+                      {renderPriorityCell(enrichedColumns)}
+                    </TableCell>
+                    <TableCell className="border border-gray flex justify-center">
+                      {renderTimeTrackingCell(enrichedColumns)}
+                    </TableCell>
                   </TableRow>
                 );
               })}

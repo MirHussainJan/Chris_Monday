@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  Accordion,
-  AccordionItem,
+  ExpandCollapse,
   Table,
   TableHeader,
   TableHeaderCell,
@@ -15,103 +14,86 @@ import { FaUsers } from "react-icons/fa"; // Fallback icon
 
 const PersonView = ({ data }) => {
   const [groupedByPerson, setGroupedByPerson] = useState({});
-  const [expandedPersons, setExpandedPersons] = useState([]);
 
-  // Group tasks by person whenever `data` changes
+  // Group tasks by persons whenever `data` changes
   useEffect(() => {
     const grouped = data.reduce((acc, task) => {
-      const person = task.enrichedColumns.person?.value;
-      if (!person || !Array.isArray(person) || person.length === 0) return acc;
-
-      person.forEach((p) => {
-        if (!acc[p.id]) {
-          acc[p.id] = { name: p.name, photo: p.photo, tasks: [] };
-        }
-        acc[p.id].tasks.push(task);
-      });
+      const assignedPersons = task.enrichedColumns?.["person@" + task.boardId]?.value || [];
+      if (assignedPersons.length === 0) {
+        // Group tasks with no assigned person under "Unassigned"
+        if (!acc["Unassigned"]) acc["Unassigned"] = [];
+        acc["Unassigned"].push(task);
+      } else {
+        assignedPersons.forEach((person) => {
+          if (!acc[person.id]) acc[person.id] = { person, tasks: [] };
+          acc[person.id].tasks.push(task);
+        });
+      }
       return acc;
     }, {});
     setGroupedByPerson(grouped);
   }, [data]);
 
-  const togglePerson = (personId) => {
-    setExpandedPersons((prev) =>
-      prev.includes(personId)
-        ? prev.filter((p) => p !== personId)
-        : [...prev, personId]
-    );
-  };
-
-  // Helper function to generate dynamic columns based on enriched data
-  const generateColumns = (personTasks) => {
-    const columnTypes = {};
-
-    // Gather unique column types from enriched columns
-    personTasks.forEach((task) => {
-      Object.keys(task.enrichedColumns).forEach((key) => {
-        const columnId = key.split('@')[0]; // Extract the column type like 'status', 'date'
-        columnTypes[columnId] = columnId;
-      });
-    });
-
-    // Create the columns array with dynamic column types
-    const columns = [
-      { id: "taskName", title: "Task Name" },
-      { id: "group", title: "Group" },
-      ...Object.keys(columnTypes).map((type) => ({
-        id: type,
-        title: type.charAt(0).toUpperCase() + type.slice(1),
-      })),
-    ];
-
-    return columns;
-  };
+  // Generate dynamic columns for the table
+  const generateColumns = () => [
+    { id: "taskName", title: "Task Name" },
+    { id: "boardName", title: "Board Name" },
+    { id: "group", title: "Group" },
+    { id: "status", title: "Status" },
+    { id: "date", title: "Date" },
+  ];
 
   return (
     <div className="person-view">
-      <Accordion>
-        {Object.keys(groupedByPerson).map((personId) => {
-          const person = groupedByPerson[personId];
-          const personTasks = person.tasks;
-          const recordCount = personTasks.length;
-          const columns = generateColumns(personTasks);
+      {Object.keys(groupedByPerson).map((personId) => {
+        const personData = groupedByPerson[personId];
+        const tasks = personData?.tasks || personData; // For "Unassigned," it's just tasks
+        const personName = personId === "Unassigned" ? "Unassigned" : personData.person.name;
+        const personPhoto = personData?.person?.photo;
+        const columns = generateColumns();
 
-          return (
-            <AccordionItem
-              key={personId}
-              title={`Person: ${person.name} (${recordCount} tasks)`}
-              isOpen={expandedPersons.includes(personId)}
-              onClick={() => togglePerson(personId)}
+        return (
+          <div key={personId} className="person-section">
+            <ExpandCollapse
+              title={
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  {personId !== "Unassigned" ? (
+                    <Avatar src={personPhoto} fallbackIcon={<FaUsers />} ariaLabel={personName} />
+                  ) : (
+                    <Avatar fallbackIcon={<FaUsers />} ariaLabel="Unassigned" size="small"/>
+                  )}
+                  <span>{`${personName} (${tasks.length} tasks)`}</span>
+                </div>
+              }
+              hideBorder
+              isDefaultOpen={false}
             >
               <Table columns={columns}>
-                <TableHeader>
+                <TableHeader className="zindex">
                   {columns.map((col) => (
                     <TableHeaderCell key={col.id} title={col.title} />
                   ))}
                 </TableHeader>
                 <TableBody>
-                  {personTasks.map((task) => (
+                  {tasks.map((task) => (
                     <TableRow key={task.id}>
-                      <TableCell>{task.name}</TableCell>
-                      <TableCell>{task.group?.title || "-"}</TableCell>
-
-                      {columns.slice(2).map((col) => {
-                        const enrichedValue = task.enrichedColumns[col.id + "@" + task.boardId];
-
-                        const displayValue = enrichedValue ? enrichedValue.value : "-";
-
-                        return (
-                          <TableCell key={col.id}>{displayValue}</TableCell>
-                        );
-                      })}
+                      <TableCell>{task.name || "No Task Name"}</TableCell>
+                      <TableCell>{task.boardname || "No Board Name"}</TableCell>
+                      <TableCell>{task.group?.title || "No Group Title"}</TableCell>
+                      <TableCell>
+                        {task.enrichedColumns?.["status@" + task.boardId]?.value || "-"}
+                      </TableCell>
+                      <TableCell>
+                        {task.enrichedColumns?.["date@" + task.boardId]?.value || "-"}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            </AccordionItem>
-          );
-        })}
-      </Accordion>
+            </ExpandCollapse>
+          </div>
+        );
+      })}
     </div>
   );
 };
