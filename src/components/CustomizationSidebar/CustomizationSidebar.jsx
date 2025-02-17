@@ -217,7 +217,7 @@ const CustomizationSidebar = ({
                 }))}
                 onChange={(e) => handleColumnSelection(e, boardId, type)}
                 placeholder={`Select ${title}`}
-                style={{ width: "100%", zIndex: 1000 }}
+                style={{ width: "100%" }}
               />
             </div>
           );
@@ -228,7 +228,7 @@ const CustomizationSidebar = ({
  
   return (
     <div
-      className={`sidebar p-6 bg-white border border-gray-300 rounded-lg shadow-lg fixed top-0 right-0 h-full transition-all duration-300 ${
+      className={`sidebar upindex p-6 bg-white border border-gray-300 rounded-lg shadow-lg fixed top-0 right-0 h-full transition-all duration-300 ${
         isOpen ? "transform translate-x-0" : "transform translate-x-full"
       }`}
       style={{

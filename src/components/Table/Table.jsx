@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FaUsers } from "react-icons/fa";
+import { FaChevronDown, FaChevronUp, FaUsers } from "react-icons/fa";
 import {
   Table as MondayTable,
   TableHeader,
@@ -11,6 +11,7 @@ import {
   AvatarGroup,
   Avatar,
   Text,
+  Button,
 } from "monday-ui-react-core";
 import SkeletonLoader from "./SkeletonLoader";
 import "monday-ui-react-core/dist/main.css";
@@ -24,16 +25,19 @@ import {
   getTimeTrackingValues,
   getProfilePhotosfromResponse,
 } from "../../MondayAPI/monday2";
+import Summary from "../Summary/Summary";
 
 const Table = ({
   boardIds,
   selectedPeopleColumns,
   enrichedData,
   setEnrichedData,
+  filteredData,
 }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [photos, setPhotos] = useState({});
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const defaultColumns = [
     { id: "name", title: "Item Name" },
     { id: "group", title: "Group" },
@@ -42,7 +46,7 @@ const Table = ({
     { id: "date", title: "Date" },
     { id: "status", title: "Status" },
     { id: "priority", title: "Priority" },
-    { id: "timeTracking", title: "Time Tracking" },
+    { id: "time_tracking", title: "Time Tracking" },
   ];
 
   const formatDate = (dateString) => {
@@ -53,15 +57,25 @@ const Table = ({
 
   const formatDuration = (seconds) => {
     if (!seconds || isNaN(seconds)) return "-";
+
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
-    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+    const remainingSeconds = seconds % 60;
+
+    if (hours > 0) {
+      return `${hours}hr ${minutes}min`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${remainingSeconds}s`;
+    } else {
+      return `${remainingSeconds}s`;
+    }
   };
 
   const parsedColumns = selectedPeopleColumns.map((col) => {
     const [type, boardId, columnId] = col.split("@");
     return { type, boardId, columnId, title: columnId };
   });
+  const toggleSummary = () => setIsSummaryOpen(!isSummaryOpen);
 
   const columns = [...defaultColumns];
 
@@ -102,7 +116,7 @@ const Table = ({
               columnId.includes("date")
             );
             const timeTrackingColumns = columnBoardMapping.filter(
-              ({ columnId }) => columnId.includes("timeTracking")
+              ({ columnId }) => columnId.includes("time_tracking")
             );
             const statusColumns = columnBoardMapping.filter(({ columnId }) =>
               columnId.includes("status")
@@ -161,8 +175,6 @@ const Table = ({
             const mapping = {};
 
             personColumns.forEach(({ columnId, boardId }) => {
-              console.log(personValues, "For now");
-
               personValues.forEach((board) => {
                 board.items_page.items.forEach((item) => {
                   const itemId = item.id;
@@ -204,10 +216,8 @@ const Table = ({
                 const itemId = item.id;
                 if (!mapping[itemId]) mapping[itemId] = {};
                 item.column_values.forEach((col) => {
-                  const key = `timeTracking@${board.id}@${col.id}`;
-                  mapping[itemId][key] = formatDuration(
-                    col.additional_info?.tracked_seconds || 0
-                  );
+                  const key = `time_tracking@${board.id}@${col.id}`;
+                  mapping[itemId][key] = formatDuration(col.duration || 0); // Update here
                 });
               });
             });
@@ -261,7 +271,6 @@ const Table = ({
     );
     if (columnKeys.length > 0) {
       const persons = enrichedColumns[columnKeys[0]].value;
-      console.log("Persons", persons);
       return (
         <AvatarGroup max={3} size="medium">
           {persons.map((person) => (
@@ -314,19 +323,35 @@ const Table = ({
       );
     }
     return (
-      <Text
-        className="w-full flex text-center justify-center items-center h-full"
-      >
+      <Text className="w-full flex text-center justify-center items-center h-full">
         {"-"}
       </Text>
-    );;
+    );
   };
 
   const renderPriorityCell = (enrichedColumns) => {
     const columnKeys = Object.keys(enrichedColumns).filter((key) =>
-      key.startsWith("priority@")
+      key.startsWith("status@")
     );
-    return columnKeys.length > 0 ? enrichedColumns[columnKeys[0]] : "-";
+    if (columnKeys.length > 0) {
+      const { text, color } = enrichedColumns[columnKeys[0]] || {};
+      return (
+        <Text
+          className="w-full flex text-center justify-center items-center h-full"
+          style={{
+            backgroundColor: color || "#000000",
+            color: "#ffffff",
+          }}
+        >
+          {text || "-"}
+        </Text>
+      );
+    }
+    return (
+      <Text className="w-full flex text-center justify-center items-center h-full">
+        {"-"}
+      </Text>
+    );
   };
 
   return (
@@ -380,7 +405,7 @@ const Table = ({
                       {renderStatusCell(enrichedColumns)}
                     </TableCell>
 
-                    <TableCell className="border bg-dynamic text-white border-gray flex justify-center">
+                    <TableCell className="border bg-dynamic padding-status text-white border-gray flex justify-center">
                       {renderPriorityCell(enrichedColumns)}
                     </TableCell>
                     <TableCell className="border border-gray flex justify-center">
@@ -391,6 +416,22 @@ const Table = ({
               })}
         </TableBody>
       </MondayTable>
+      <div className="w-full flex justify-center py-4">
+        <Button
+          onClick={toggleSummary}
+          className="flex items-center gap-2 bg-blue-500 text-white py-2 px-4 rounded-md transition-all hover:bg-blue-600"
+        >
+          {isSummaryOpen ? <FaChevronUp /> : <FaChevronDown />}
+          {isSummaryOpen ? "Hide Summary" : "Show Summary"}
+        </Button>
+      </div>
+
+      {/* Summary Section */}
+      {isSummaryOpen && (
+        <div className="w-full transition-all duration-300">
+          <Summary data={enrichedData} />
+        </div>
+      )}
     </div>
   );
 };

@@ -9,82 +9,180 @@ import {
   TableCell,
   AvatarGroup,
   Avatar,
+  Text,
+  Label,
 } from "monday-ui-react-core";
-import { FaUsers } from "react-icons/fa"; // Fallback icon
+import { FaUsers } from "react-icons/fa";
 
-const PersonView = ({ data }) => {
-  const [groupedByPerson, setGroupedByPerson] = useState({});
+const PersonView = ({ data, secondaryView }) => {
+  const [groupedByPersons, setGroupedByPersons] = useState({});
 
-  // Group tasks by persons whenever `data` changes
   useEffect(() => {
-    const grouped = data.reduce((acc, task) => {
-      const assignedPersons = task.enrichedColumns?.["person@" + task.boardId]?.value || [];
-      if (assignedPersons.length === 0) {
-        // Group tasks with no assigned person under "Unassigned"
-        if (!acc["Unassigned"]) acc["Unassigned"] = [];
-        acc["Unassigned"].push(task);
-      } else {
-        assignedPersons.forEach((person) => {
-          if (!acc[person.id]) acc[person.id] = { person, tasks: [] };
-          acc[person.id].tasks.push(task);
+    const grouped = {};
+
+    data.forEach((task) => {
+      const personColumns = Object.keys(task.enrichedColumns || {}).filter((key) =>
+        key.startsWith("person@")
+      );
+
+      if (personColumns.length > 0) {
+        const persons = task.enrichedColumns[personColumns[0]].value || [];
+
+        persons.forEach((person) => {
+          if (!grouped[person.id]) {
+            grouped[person.id] = {
+              person,
+              tasks: [],
+            };
+          }
+          grouped[person.id].tasks.push(task);
         });
+      } else {
+        if (!grouped["no_person"]) {
+          grouped["no_person"] = {
+            person: null,
+            tasks: [],
+          };
+        }
+        grouped["no_person"].tasks.push(task);
       }
-      return acc;
-    }, {});
-    setGroupedByPerson(grouped);
+    });
+
+    setGroupedByPersons(grouped);
   }, [data]);
 
-  // Generate dynamic columns for the table
   const generateColumns = () => [
     { id: "taskName", title: "Task Name" },
-    { id: "boardName", title: "Board Name" },
     { id: "group", title: "Group" },
-    { id: "status", title: "Status" },
     { id: "date", title: "Date" },
+    { id: "status", title: "Status" },
+    { id: "time_tracking", title: "Time Tracking" },
   ];
+
+  const renderStatusCell = (enrichedColumns) => {
+    const columnKeys = Object.keys(enrichedColumns).filter((key) =>
+      key.startsWith("status@")
+    );
+    if (columnKeys.length > 0) {
+      const { text, color } = enrichedColumns[columnKeys[0]] || {};
+      return (
+        <div
+          className="w-full h-full flex justify-center items-center"
+          style={{
+            backgroundColor: color || "#000000",
+            color: "#ffffff",
+          }}
+        >
+          {text || "-"}
+        </div>
+      );
+    }
+    return (
+      <div className="w-full flex justify-center items-center">{"-"}</div>
+    );
+  };
+
+  const renderDateCell = (enrichedColumns) => {
+    const columnKeys = Object.keys(enrichedColumns).filter((key) =>
+      key.startsWith("date@")
+    );
+    const dateValue =
+      columnKeys.length > 0 ? enrichedColumns[columnKeys[0]] : null;
+    return dateValue ? (
+      <Label text={new Date(dateValue).toLocaleDateString()} type="primary" />
+    ) : (
+      "-"
+    );
+  };
+
+  const renderTimeTrackingCell = (enrichedColumns) => {
+    const timeTrackingKey = Object.keys(enrichedColumns).find((key) =>
+      key.startsWith("time_tracking@")
+    );
+    const timeTrackingValue = timeTrackingKey
+      ? enrichedColumns[timeTrackingKey]
+      : null;
+
+    return timeTrackingValue ? (
+      <div className="w-full h-full flex justify-center items-center">
+        {timeTrackingValue}
+      </div>
+    ) : (
+      <div className="w-full flex justify-center items-center">{"-"}</div>
+    );
+  };
 
   return (
     <div className="person-view">
-      {Object.keys(groupedByPerson).map((personId) => {
-        const personData = groupedByPerson[personId];
-        const tasks = personData?.tasks || personData; // For "Unassigned," it's just tasks
-        const personName = personId === "Unassigned" ? "Unassigned" : personData.person.name;
-        const personPhoto = personData?.person?.photo;
+      {Object.keys(groupedByPersons).map((personId) => {
+        const { person, tasks } = groupedByPersons[personId];
         const columns = generateColumns();
 
         return (
           <div key={personId} className="person-section">
             <ExpandCollapse
               title={
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  {personId !== "Unassigned" ? (
-                    <Avatar src={personPhoto} fallbackIcon={<FaUsers />} ariaLabel={personName} />
-                  ) : (
-                    <Avatar fallbackIcon={<FaUsers />} ariaLabel="Unassigned" size="small"/>
-                  )}
-                  <span>{`${personName} (${tasks.length} tasks)`}</span>
-                </div>
+                person ? (
+                  <div className="flex items-center">
+                    <AvatarGroup max={1} size="medium">
+                      <Avatar
+                        src={person.photo}
+                        ariaLabel={person.name || "Unknown"}
+                        size="small"
+                        type="img"
+                        fallbackIcon={<FaUsers />}
+                      />
+                    </AvatarGroup>
+                    <span className="ml-2 flex items-center">
+                      {person.name} ({tasks.length} tasks)
+                    </span>
+                  </div>
+                ) : (
+                  `No Person Assigned (${tasks.length} tasks)`
+                )
               }
-              hideBorder
-              isDefaultOpen={false}
+              isDefaultOpen={true}
             >
-              <Table columns={columns}>
-                <TableHeader className="zindex">
+              <Table columns={columns} className="table-auto border border-gray-300">
+                <TableHeader>
                   {columns.map((col) => (
-                    <TableHeaderCell key={col.id} title={col.title} />
+                    <TableHeaderCell
+                      key={col.id}
+                      title={col.title}
+                      className="flex justify-center text-center border border-gray-300"
+                    />
                   ))}
                 </TableHeader>
                 <TableBody>
                   {tasks.map((task) => (
                     <TableRow key={task.id}>
-                      <TableCell>{task.name || "No Task Name"}</TableCell>
-                      <TableCell>{task.boardname || "No Board Name"}</TableCell>
-                      <TableCell>{task.group?.title || "No Group Title"}</TableCell>
-                      <TableCell>
-                        {task.enrichedColumns?.["status@" + task.boardId]?.value || "-"}
+                      <TableCell
+                        className="flex justify-center text-center border border-gray-300"
+                      >
+                        {task.name || "No Task Name"}
                       </TableCell>
-                      <TableCell>
-                        {task.enrichedColumns?.["date@" + task.boardId]?.value || "-"}
+                      <TableCell
+                        className="flex justify-center text-center border border-gray-300"
+                      >
+                        <Label
+                          text={task.group?.title || "No Group Title"}
+                          type="primary"
+                        />
+                      </TableCell>
+                      <TableCell
+                        className="flex justify-center text-center border border-gray-300"
+                      >
+                        {renderDateCell(task.enrichedColumns || {})}
+                      </TableCell>
+                      <TableCell
+                        className="flex justify-center padding-status text-center border border-gray-300"
+                      >
+                        {renderStatusCell(task.enrichedColumns || {})}
+                      </TableCell>
+                      <TableCell
+                        className="flex justify-center text-center border border-gray-300"
+                      >
+                        {renderTimeTrackingCell(task.enrichedColumns || {})}
                       </TableCell>
                     </TableRow>
                   ))}

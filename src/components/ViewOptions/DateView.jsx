@@ -9,23 +9,24 @@ import {
   TableCell,
   AvatarGroup,
   Avatar,
+  Label,
 } from "monday-ui-react-core";
 import { FaUsers } from "react-icons/fa";
 
-const DateView = ({ data }) => {
+const DateView = ({ data, secondaryView }) => {
   const [categorizedData, setCategorizedData] = useState({
-    past: [],
-    current: [],
-    future: [],
+    past: {},
+    current: {},
+    future: {},
   });
 
   useEffect(() => {
     const currentDate = new Date();
 
     const categorized = {
-      past: [],
-      current: [],
-      future: [],
+      past: {},
+      current: {},
+      future: {},
     };
 
     data.forEach((task) => {
@@ -34,93 +35,166 @@ const DateView = ({ data }) => {
       );
       const itemDate = dateKey ? new Date(task.enrichedColumns[dateKey]) : null;
 
+      let category = null;
       if (itemDate) {
         if (itemDate.toDateString() === currentDate.toDateString()) {
-          categorized.current.push(task);
+          category = "current";
         } else if (itemDate < currentDate) {
-          categorized.past.push(task);
+          category = "past";
         } else {
-          categorized.future.push(task);
+          category = "future";
+        }
+      }
+
+      if (category) {
+        if (secondaryView === "board") {
+          const boardId = task.boardId;
+          if (!categorized[category][boardId]) {
+            categorized[category][boardId] = { tasks: [] };
+          }
+          categorized[category][boardId].tasks.push(task);
+        } else if (secondaryView === "person") {
+          const personKey = Object.keys(task.enrichedColumns).find((key) =>
+            key.startsWith("person@")
+          );
+          const persons = personKey ? task.enrichedColumns[personKey].value : [];
+
+          if (persons.length > 0) {
+            persons.forEach((person) => {
+              if (!categorized[category][person.id]) {
+                categorized[category][person.id] = {
+                  personDetails: person,
+                  tasks: [],
+                };
+              }
+              categorized[category][person.id].tasks.push(task);
+            });
+          } else {
+            if (!categorized[category]["unassigned"]) {
+              categorized[category]["unassigned"] = { tasks: [] };
+            }
+            categorized[category]["unassigned"].tasks.push(task);
+          }
+        } else {
+          if (!categorized[category]["allTasks"]) {
+            categorized[category]["allTasks"] = { tasks: [] };
+          }
+          categorized[category]["allTasks"].tasks.push(task);
         }
       }
     });
 
     setCategorizedData(categorized);
-  }, [data]);
+  }, [data, secondaryView]);
 
-  const generateColumns = (tasks) => {
-    const columnTypes = {};
-
-    tasks.forEach((task) => {
-      if (task.enrichedColumns) {
-        Object.keys(task.enrichedColumns).forEach((key) => {
-          const columnId = key.split("@")[0];
-          columnTypes[columnId] = columnId;
-        });
-      }
-    });
-
-    return [
-      { id: "taskName", title: "Task Name" },
-      { id: "group", title: "Group" },
-      ...Object.keys(columnTypes).map((type) => ({
-        id: type,
-        title: type.charAt(0).toUpperCase() + type.slice(1),
-      })),
-    ];
-  };
+  const generateColumns = () => [
+    { id: "taskName", title: "Task Name" },
+    { id: "group", title: "Group" },
+    { id: "date", title: "Date" },
+    { id: "person", title: "Person" },
+    { id: "status", title: "Status" },
+    { id: "time_tracking", title: "Time Tracking" },
+  ];
 
   const renderPersonCell = (persons) => {
-    const validPersons = Array.isArray(persons) ? persons : [];
+    if (!Array.isArray(persons) || persons.length === 0) {
+      return "-";
+    }
     return (
       <AvatarGroup max={3} size="medium">
-        {validPersons.length > 0 ? (
-          validPersons.map((person) => (
-            <Avatar
-              key={person.id}
-              src={person.photo}
-              ariaLabel={person.name || "Unknown"}
-              type="img"
-              fallbackIcon={<FaUsers />}
-            />
-          ))
-        ) : (
-          <Avatar fallbackIcon={<FaUsers />} ariaLabel="No person assigned" />
-        )}
+        {persons.map((person) => (
+          <Avatar
+            key={person.id}
+            src={person.photo}
+            ariaLabel={person.name || "Unknown"}
+            type="img"
+            fallbackIcon={<FaUsers />}
+          />
+        ))}
       </AvatarGroup>
     );
   };
 
-  const renderTable = (category, tasks) => {
-    const columns = generateColumns(tasks);
+  const renderStatusCell = (enrichedColumns) => {
+    const statusKey = Object.keys(enrichedColumns).find((key) =>
+      key.startsWith("status@")
+    );
+    if (statusKey) {
+      const { text, color } = enrichedColumns[statusKey] || {};
+      return (
+        <div
+          className="w-full h-full flex justify-center items-center padding-status"
+          style={{
+            backgroundColor: color || "#000000",
+            color: "#ffffff",
+          }}
+        >
+          {text || "-"}
+        </div>
+      );
+    }
+    return "-";
+  };
+
+  const renderDateCell = (enrichedColumns) => {
+    const dateKey = Object.keys(enrichedColumns).find((key) =>
+      key.startsWith("date@")
+    );
+    const dateValue = dateKey ? enrichedColumns[dateKey] : null;
+    return dateValue ? (
+      <Label text={new Date(dateValue).toLocaleDateString()} type="primary" />
+    ) : (
+      "-"
+    );
+  };
+
+  const renderTable = (tasks) => {
+    const columns = generateColumns();
 
     return (
       <Table columns={columns}>
-        <TableHeader className="zindex">
+        <TableHeader>
           {columns.map((col) => (
-            <TableHeaderCell key={col.id} title={col.title} />
+            <TableHeaderCell
+              key={col.id}
+              title={col.title}
+              className="flex justify-center border border-gray-300"
+            />
           ))}
         </TableHeader>
         <TableBody>
           {tasks.map((task) => (
             <TableRow key={task.id}>
-              <TableCell>{task.name || "No Task Name"}</TableCell>
-              <TableCell>{task.group?.title || "No Group Title"}</TableCell>
-
-              {columns.slice(2).map((col) => {
-                const enrichedValue =
-                  task.enrichedColumns?.[col.id + "@" + task.boardId]?.value;
-
-                if (col.id === "person") {
-                  return (
-                    <TableCell key={col.id}>
-                      {renderPersonCell(enrichedValue)}
-                    </TableCell>
-                  );
+              <TableCell className="flex justify-center border border-gray-300">
+                {task.name || "No Task Name"}
+              </TableCell>
+              <TableCell className="flex justify-center border border-gray-300">
+                {task.group?.title || "No Group Title"}
+              </TableCell>
+              <TableCell className="flex justify-center border border-gray-300">
+                {renderDateCell(task.enrichedColumns || {})}
+              </TableCell>
+              <TableCell className="flex justify-center border border-gray-300">
+                {renderPersonCell(
+                  task.enrichedColumns?.[
+                    Object.keys(task.enrichedColumns).find((key) =>
+                      key.startsWith("person@")
+                    )
+                  ]?.value
+                )}
+              </TableCell>
+              <TableCell className="flex justify-center border border-gray-300 padding-status">
+                {renderStatusCell(task.enrichedColumns || {})}
+              </TableCell>
+              <TableCell className="flex justify-center border border-gray-300">
+                {
+                  task.enrichedColumns?.[
+                    Object.keys(task.enrichedColumns).find((key) =>
+                      key.startsWith("time_tracking@")
+                    )
+                  ] || "-"
                 }
-
-                return <TableCell key={col.id}>{enrichedValue || "-"}</TableCell>;
-              })}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -131,15 +205,35 @@ const DateView = ({ data }) => {
   return (
     <div className="date-view">
       {["past", "current", "future"].map((category) => (
-        <div key={category} className="date-section">
+        <div key={category} className="date-section mb-4">
           <ExpandCollapse
             title={`${category.charAt(0).toUpperCase() + category.slice(1)} (${
-              categorizedData[category].length
+              Object.values(categorizedData[category]).reduce(
+                (acc, group) => acc + group.tasks.length,
+                0
+              )
             } tasks)`}
-            hideBorder
+            // hideBorder
             isDefaultOpen={true}
           >
-            {renderTable(category, categorizedData[category])}
+            {Object.keys(categorizedData[category]).map((groupKey) => {
+              const tasks = categorizedData[category][groupKey].tasks;
+              const title =
+                secondaryView === "board"
+                  ? `Board ${groupKey}`
+                  : secondaryView === "person"
+                  ? categorizedData[category][groupKey].personDetails?.name ||
+                    "Unassigned"
+                  : null;
+
+              return secondaryView ? (
+                <ExpandCollapse key={groupKey} title={title} hideBorder isDefaultOpen={true}>
+                  {renderTable(tasks)}
+                </ExpandCollapse>
+              ) : (
+                renderTable(tasks)
+              );
+            })}
           </ExpandCollapse>
         </div>
       ))}
