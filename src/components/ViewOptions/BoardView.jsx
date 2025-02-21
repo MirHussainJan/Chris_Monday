@@ -10,11 +10,13 @@ import {
   AvatarGroup,
   Avatar,
   Label,
+  Text,
 } from "monday-ui-react-core";
 import { FaUsers } from "react-icons/fa";
 
 const BoardView = ({ data, secondaryView }) => {
   const [groupedData, setGroupedData] = useState({});
+  const [sorting, setSorting] = useState({});
 
   useEffect(() => {
     const grouped = {};
@@ -22,8 +24,10 @@ const BoardView = ({ data, secondaryView }) => {
 
     data.forEach((task) => {
       const boardId = task.boardId;
+      const boardName = task.boardname;
+
       if (!grouped[boardId]) {
-        grouped[boardId] = {};
+        grouped[boardId] = { boardName, categories: {} };
       }
 
       const dateKey = Object.keys(task.enrichedColumns).find((key) =>
@@ -44,10 +48,10 @@ const BoardView = ({ data, secondaryView }) => {
           }
         }
 
-        if (!grouped[boardId][category]) {
-          grouped[boardId][category] = { tasks: [] };
+        if (!grouped[boardId].categories[category]) {
+          grouped[boardId].categories[category] = [];
         }
-        grouped[boardId][category].tasks.push(task);
+        grouped[boardId].categories[category].push(task);
       } else if (secondaryView === "person") {
         const personKey = Object.keys(task.enrichedColumns).find((key) =>
           key.startsWith("person@")
@@ -56,25 +60,22 @@ const BoardView = ({ data, secondaryView }) => {
 
         if (persons.length > 0) {
           persons.forEach((person) => {
-            if (!grouped[boardId][person.id]) {
-              grouped[boardId][person.id] = {
-                personDetails: person,
-                tasks: [],
-              };
+            if (!grouped[boardId].categories[person.name]) {
+              grouped[boardId].categories[person.name] = [];
             }
-            grouped[boardId][person.id].tasks.push(task);
+            grouped[boardId].categories[person.name].push(task);
           });
         } else {
-          if (!grouped[boardId]["unassigned"]) {
-            grouped[boardId]["unassigned"] = { tasks: [] };
+          if (!grouped[boardId].categories["Unassigned"]) {
+            grouped[boardId].categories["Unassigned"] = [];
           }
-          grouped[boardId]["unassigned"].tasks.push(task);
+          grouped[boardId].categories["Unassigned"].push(task);
         }
       } else {
-        if (!grouped[boardId]["allTasks"]) {
-          grouped[boardId]["allTasks"] = { tasks: [] };
+        if (!grouped[boardId].categories["allTasks"]) {
+          grouped[boardId].categories["allTasks"] = [];
         }
-        grouped[boardId]["allTasks"].tasks.push(task);
+        grouped[boardId].categories["allTasks"].push(task);
       }
     });
 
@@ -90,104 +91,175 @@ const BoardView = ({ data, secondaryView }) => {
     { id: "time_tracking", title: "Time Tracking" },
   ];
 
-  const renderPersonCell = (persons) => {
-    if (!Array.isArray(persons) || persons.length === 0) {
-      return "-";
-    }
-    return (
-      <AvatarGroup max={3} size="medium">
-        {persons.map((person) => (
-          <Avatar
-            key={person.id}
-            src={person.photo}
-            ariaLabel={person.name || "Unknown"}
-            type="img"
-            fallbackIcon={<FaUsers />}
-          />
-        ))}
-      </AvatarGroup>
-    );
+  const onSort = (columnId, sortState) => {
+    setSorting({
+      [columnId]: sortState,
+    });
   };
 
-  const renderStatusCell = (enrichedColumns) => {
-    const statusKey = Object.keys(enrichedColumns).find((key) =>
-      key.startsWith("status@")
-    );
-    if (statusKey) {
-      const { text, color } = enrichedColumns[statusKey] || {};
-      return (
-        <div
-          className="w-full h-full flex justify-center items-center padding-status"
-          style={{
-            backgroundColor: color || "#000000",
-            color: "#ffffff",
-          }}
-        >
-          {text || "-"}
-        </div>
-      );
-    }
-    return "-";
-  };
+  const sortTasks = (tasks) => {
+    if (!Array.isArray(tasks)) return [];
 
-  const renderDateCell = (enrichedColumns) => {
-    const dateKey = Object.keys(enrichedColumns).find((key) =>
-      key.startsWith("date@")
-    );
-    const dateValue = dateKey ? enrichedColumns[dateKey] : null;
-  
-    return dateValue ? (
-      <Label text={new Date(dateValue).toLocaleDateString()} type="primary" />
-    ) : (
-      "-"
-    );
+    const sortedColumn = Object.keys(sorting)[0];
+    const sortOrder = sorting[sortedColumn];
+
+    if (!sortedColumn || !sortOrder) return tasks;
+
+    return [...tasks].sort((a, b) => {
+      let valA, valB;
+
+      switch (sortedColumn) {
+        case "taskName":
+          valA = a.name || "";
+          valB = b.name || "";
+          break;
+        case "group":
+          valA = a.group?.title || "";
+          valB = b.group?.title || "";
+          break;
+        case "date":
+          valA = new Date(
+            a.enrichedColumns?.[
+              Object.keys(a.enrichedColumns).find((key) =>
+                key.startsWith("date@")
+              )
+            ] || 0
+          ).getTime();
+          valB = new Date(
+            b.enrichedColumns?.[
+              Object.keys(b.enrichedColumns).find((key) =>
+                key.startsWith("date@")
+              )
+            ] || 0
+          ).getTime();
+          break;
+        case "status":
+          valA =
+            a.enrichedColumns?.[
+              Object.keys(a.enrichedColumns).find((key) =>
+                key.startsWith("status@")
+              )
+            ]?.text || "";
+          valB =
+            b.enrichedColumns?.[
+              Object.keys(b.enrichedColumns).find((key) =>
+                key.startsWith("status@")
+              )
+            ]?.text || "";
+          break;
+        case "time_tracking":
+          valA =
+            a.enrichedColumns?.[
+              Object.keys(a.enrichedColumns).find((key) =>
+                key.startsWith("time_tracking@")
+              )
+            ] || 0;
+          valB =
+            b.enrichedColumns?.[
+              Object.keys(b.enrichedColumns).find((key) =>
+                key.startsWith("time_tracking@")
+              )
+            ] || 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (sortOrder === "asc") return valA > valB ? 1 : -1;
+      if (sortOrder === "desc") return valA < valB ? 1 : -1;
+      return 0;
+    });
   };
 
   const renderTable = (tasks) => {
+    if (!tasks || tasks.length === 0) return null;
+
     const columns = generateColumns();
+    const sortedTasks = sortTasks(tasks);
 
     return (
       <Table columns={columns}>
-        <TableHeader>
+        <TableHeader className="zindex">
           {columns.map((col) => (
             <TableHeaderCell
               key={col.id}
               title={col.title}
-              className="flex justify-center border border-gray-300"
+              onSortClicked={(sortState) => onSort(col.id, sortState)}
+              sortState={sorting[col.id]}
             />
           ))}
         </TableHeader>
         <TableBody>
-          {tasks.map((task) => (
-            <TableRow key={task.id}>
-              <TableCell className="flex justify-center border border-gray-300">
-                {task.name || "No Task Name"}
-              </TableCell>
-              <TableCell className="flex justify-center border border-gray-300">
-                {<Label text={task.group?.title}/> || "No Group Title"}
-              </TableCell>
-              <TableCell className="flex justify-center border border-gray-300">
-                {renderDateCell(task.enrichedColumns || {})}
-              </TableCell>
-              <TableCell className="flex justify-center border border-gray-300">
-                {renderPersonCell(
-                  task.enrichedColumns?.[Object.keys(task.enrichedColumns).find((key) =>
-                    key.startsWith("person@")
-                  )]?.value
-                )}
-              </TableCell>
-              <TableCell className="flex justify-center border border-gray-300 padding-status">
-                {renderStatusCell(task.enrichedColumns || {})}
-              </TableCell>
-              <TableCell className="flex justify-center border border-gray-300">
-                {
-                  task.enrichedColumns?.[Object.keys(task.enrichedColumns).find((key) =>
-                    key.startsWith("time_tracking@")
-                  )] || "-"
-                }
-              </TableCell>
-            </TableRow>
-          ))}
+          {sortedTasks.map((task) => {
+            const statusColumnKey = Object.keys(task.enrichedColumns).find(
+              (key) => key.startsWith("status@")
+            );
+            const statusData = statusColumnKey
+              ? task.enrichedColumns[statusColumnKey]
+              : {};
+            const statusText = statusData.text || "-";
+            const statusColor = statusData.color || "#cccccc"; // Default light gray if no color is provided
+
+            return (
+              <TableRow key={task.id}>
+                <TableCell>{task.name || "No Task Name"}</TableCell>
+                <TableCell>
+                  <Label text={task.group?.title || "No Group Title"} />
+                </TableCell>
+                <TableCell>
+                  <Label
+                    text={
+                      new Date(
+                        task.enrichedColumns?.[
+                          Object.keys(task.enrichedColumns).find((key) =>
+                            key.startsWith("date@")
+                          )
+                        ] || ""
+                      ).toLocaleDateString() || "-"
+                    }
+                    type="primary"
+                  />
+                </TableCell>
+                <TableCell>
+                  <AvatarGroup max={3} size="medium">
+                    {(
+                      task.enrichedColumns?.[
+                        Object.keys(task.enrichedColumns).find((key) =>
+                          key.startsWith("person@")
+                        )
+                      ]?.value || []
+                    ).map((person) => (
+                      <Avatar
+                        key={person.id}
+                        src={person.photo}
+                        ariaLabel={person.name || "Unknown"}
+                        type="img"
+                        fallbackIcon={<FaUsers />}
+                      /> || '-'
+                    ))}
+                  </AvatarGroup>
+                </TableCell>
+                  <div
+                    className="padding-status h-full w-full flex items-center justify-center"
+                    style={{
+                      backgroundColor: statusColor,
+                      color: "#ffffff",
+                    }}
+                  >
+                    <Text color="fixedLight">
+                    {statusText}
+                    </Text>
+                  </div>
+                <TableCell>
+                  {task.enrichedColumns?.[
+                    Object.keys(task.enrichedColumns).find((key) =>
+                      key.startsWith("time_tracking@")
+                    )
+                  ] || "-"}
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     );
@@ -195,42 +267,17 @@ const BoardView = ({ data, secondaryView }) => {
 
   return (
     <div className="board-view">
-      {Object.keys(groupedData).map((boardId) => {
-        const boardTasks = groupedData[boardId];
-        const boardName =
-          Object.values(boardTasks)[0]?.tasks?.[0]?.boardname ||
-          `Board ${boardId}`;
-
-        return (
-          <div key={boardId} className="board-section mb-4">
-            <ExpandCollapse
-              title={`${boardName} (${Object.values(boardTasks).reduce(
-                (acc, item) => acc + item.tasks.length,
-                0
-              )} tasks)`}
-              isDefaultOpen={true}
-            >
-              {Object.keys(boardTasks).map((groupKey) => {
-                const tasks = boardTasks[groupKey].tasks;
-                const title =
-                  secondaryView === "date"
-                    ? groupKey.charAt(0).toUpperCase() + groupKey.slice(1) // "Past", "Current", "Future"
-                    : secondaryView === "person"
-                    ? boardTasks[groupKey].personDetails?.name
-                    : null;
-
-                return secondaryView ? (
-                  <ExpandCollapse key={groupKey} title={title} hideBorder isDefaultOpen={true}>
-                    {renderTable(tasks)}
-                  </ExpandCollapse>
-                ) : (
-                  renderTable(tasks)
-                );
-              })}
-            </ExpandCollapse>
-          </div>
-        );
-      })}
+      {Object.entries(groupedData).map(([boardId, { boardName, categories }]) => (
+        <ExpandCollapse className="mb-4" key={boardId} title={boardName} isDefaultOpen>
+          {secondaryView
+            ? Object.entries(categories).map(([title, tasks]) => (
+                <ExpandCollapse key={title} title={title} hideBorder>
+                  {renderTable(tasks)}
+                </ExpandCollapse>
+              ))
+            : renderTable(categories.allTasks)}
+        </ExpandCollapse>
+      ))}
     </div>
   );
 };
